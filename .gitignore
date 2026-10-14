@@ -11,8 +11,15 @@ yarn-error.log*
 frontend/dist/
 coverage/
 
-# Environment (keep .env.example files tracked)
-frontend/.env.local
+# Environment: one .env at the repo root (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+
+# Vercel CLI
+.vercel
 
 # SQLite atomic-write temp file and automatic pre-migration backups
 backend/data/*.tmp

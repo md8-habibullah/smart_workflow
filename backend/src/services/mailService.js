@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { isTest } from '../config/env.js';
+import { isDemoMode, isTest } from '../config/env.js';
 import * as emailRepository from '../repositories/emailRepository.js';
 import { decryptSecret } from '../utils/secretBox.js';
 import { renderEmail } from '../utils/emailTemplates.js';
@@ -24,7 +24,7 @@ const fromHeader = (s) => ({ name: s.from_name, address: s.from_email });
 
 /** Builds a nodemailer transport from settings (unsaved settings are allowed, for the test button). */
 export const createTransport = (s) => {
-  if (s.transport === 'LOG') return nodemailer.createTransport({ jsonTransport: true });
+  if (s.transport === 'LOG' || isDemoMode()) return nodemailer.createTransport({ jsonTransport: true });
   if (!s.smtp_host) throw new Error('SMTP host is not configured.');
   const password = s.smtp_password ?? decryptSecret(s.smtp_password_enc);
   return nodemailer.createTransport({
@@ -134,6 +134,15 @@ export const startMailWorker = () => {
   timer = setInterval(flushOutbox, POLL_MS);
   timer.unref?.();
   flushOutbox();
+};
+
+/**
+ * Serverless variant (Vercel): no timers survive between requests, so queued
+ * mail is delivered right after it is enqueued, while the function is warm.
+ */
+export const enableOnDemandDelivery = () => {
+  if (unsubscribe) return;
+  unsubscribe = emailRepository.onEnqueue(() => setTimeout(flushOutbox, 0));
 };
 
 export const stopMailWorker = () => {

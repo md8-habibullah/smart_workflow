@@ -3,8 +3,8 @@ echo =======================================================
 echo   Smart Workforce ^& Task Allocation System - Setup
 echo =======================================================
 echo.
-echo Installing root, backend and frontend dependencies...
-call npm run setup
+echo Installing all dependencies (one npm workspace)...
+call npm install
 if errorlevel 1 (
   echo.
   echo Setup failed. Make sure Node.js 20 or newer is installed.

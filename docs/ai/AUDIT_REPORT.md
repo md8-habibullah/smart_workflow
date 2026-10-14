@@ -27,8 +27,8 @@ The Flutter client was mostly a static mock-up:
 | 7 | High | Assign accepted any `employeeId`: non-existent, inactive, admin, or lacking skills. | Validates the employee and runs the eligibility engine; ineligible requires explicit `force`. |
 | 8 | High | No endpoint for employees to change task status: the workflow could never complete. | `PATCH /tasks/:id/status` with a role-checked state machine ([TASK_WORKFLOW.md](TASK_WORKFLOW.md)). |
 | 9 | Medium | Department and skill admin routes allowed only `ADMIN`, so `SUPER_ADMIN` got 403. | `requireAdmin` accepts both admin roles everywhere. |
-| 10 | Medium | "Deadline fit" ignored the deadline (it compared the estimate to weekly capacity). | Uses working hours available before the deadline minus work already due by then. |
-| 11 | Medium | Skill-match score was always 100 for eligible candidates (ratio capped at 1). | Rewards proficiency above the minimum (75 to 100). |
+| 10 | Medium | "Deadline fit" ignored the deadline (it compared the estimate to weekly capacity). | Uses working hours available before the deadline minus work already due by then. Engine v2 goes further: an earliest-deadline-first simulation of the person's queue ([ALLOCATION_ENGINE.md](ALLOCATION_ENGINE.md)). |
+| 11 | Medium | Skill-match score was always 100 for eligible candidates (ratio capped at 1). | Rewards proficiency above the minimum (75 to 100). Engine v2 makes it priority-aware (experts for critical work, "just qualified" people for routine work). |
 | 12 | Medium | Workload used full estimates and never decreased as work was logged. | Uses remaining hours (estimate − logged). |
 | 13 | Medium | Deadlines stored in whatever format the client sent, so `deadline < DATETIME('now')` compared ISO `T…Z` strings against SQLite format, wrongly. | All timestamps normalised to UTC `YYYY-MM-DD HH:MM:SS`. |
 | 14 | Medium | Revoked/deactivated accounts kept working until JWT expiry (approval state was baked into the token). | Account state is re-read from the DB on every request. |
@@ -44,9 +44,10 @@ The Flutter client was mostly a static mock-up:
 | Severity | Defect | Fix |
 | --- | --- | --- |
 | **High** | A regular ADMIN could promote any user to SUPER_ADMIN: `changeRole` only protected super-admin *targets*. | Role changes are super-admin only; the last active super admin can't be demoted or deactivated. |
-
+| Medium | Race on the "last active super admin" rule: `changeRole` / `setActive` counted super admins **before** the update, outside the transaction, so two super admins demoting each other at the same moment could leave none. | The count and the update run inside one `withTransaction` in [`adminController.js`](../../backend/src/controllers/adminController.js); the queue serialises them, so the second request gets 409. |
 ## Verification
 
-- Backend: `npm test`. **106 integration tests** across auth, RBAC, full task lifecycle, allocation scoring, CRUD, reports, notifications, file uploads, role management, e-mail outbox and password recovery, each file on a fresh in-memory database.
+- Backend: `npm test`. **157 integration tests in 12 files** across auth, RBAC, full task lifecycle, allocation scoring and batch planning, CRUD, reports, notifications, file uploads, role management, e-mail outbox and password recovery, pagination, error handling and public demo mode, each file on a fresh in-memory database.
+- `npm run check` runs the tests, the frontend lint and the production build in one go.
 - Legacy upgrade: a database created by the original code was opened by the new server; migration 2 ran, and demo logins work with the real password.
 - Frontend: production build passes; an automated browser run (Playwright) drives the real UI through login, every page, task creation, smart allocation, employee start/log/comment/submit, admin approval, and the mobile drawer.

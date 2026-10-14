@@ -1,7 +1,14 @@
 import { defaultExecutor } from '../config/db.js';
 import { REMAINING_HOURS_SQL } from './employeeRepository.js';
+import { withPage } from '../utils/pagination.js';
 
 export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'REVIEW'];
+
+const TASK_FROM = `
+  FROM tasks t
+  INNER JOIN projects p ON t.project_id = p.id
+  LEFT JOIN task_assignments ta ON t.id = ta.task_id AND ta.is_current = 1
+  LEFT JOIN employees e ON ta.employee_id = e.id`;
 
 const TASK_SELECT = `
   SELECT
@@ -20,43 +27,60 @@ const TASK_SELECT = `
     ${REMAINING_HOURS_SQL} AS remaining_hours,
     CASE WHEN t.status NOT IN ('COMPLETED', 'CANCELLED') AND t.deadline < DATETIME('now') THEN 1 ELSE 0 END AS is_overdue,
     (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id) AS comment_count
-  FROM tasks t
-  INNER JOIN projects p ON t.project_id = p.id
-  LEFT JOIN task_assignments ta ON t.id = ta.task_id AND ta.is_current = 1
-  LEFT JOIN employees e ON ta.employee_id = e.id`;
+  ${TASK_FROM}`;
 
 const PRIORITY_ORDER = `CASE t.priority WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END`;
 
-export const getAllTasks = (filters = {}, ex = defaultExecutor) => {
-  let sql = `${TASK_SELECT} WHERE 1 = 1`;
+/** WHERE clause shared by the task list and its counts. */
+const taskWhere = (filters) => {
+  let where = ' WHERE 1 = 1';
   const params = [];
 
   if (filters.status) {
-    sql += ' AND t.status = ?';
+    where += ' AND t.status = ?';
     params.push(filters.status);
   }
   if (filters.priority) {
-    sql += ' AND t.priority = ?';
+    where += ' AND t.priority = ?';
     params.push(filters.priority);
   }
   if (filters.projectId) {
-    sql += ' AND t.project_id = ?';
+    where += ' AND t.project_id = ?';
     params.push(filters.projectId);
   }
   if (filters.employeeId) {
-    sql += ' AND ta.employee_id = ?';
+    where += ' AND ta.employee_id = ?';
     params.push(filters.employeeId);
   }
-  if (filters.unassigned) sql += ' AND ta.id IS NULL';
-  if (filters.overdue) sql += ` AND t.status NOT IN ('COMPLETED', 'CANCELLED') AND t.deadline < DATETIME('now')`;
+  if (filters.unassigned) where += ' AND ta.id IS NULL';
+  if (filters.overdue) where += ` AND t.status NOT IN ('COMPLETED', 'CANCELLED') AND t.deadline < DATETIME('now')`;
   if (filters.search) {
-    sql += ' AND (t.title LIKE ? OR t.description LIKE ? OR p.name LIKE ?)';
+    where += ' AND (t.title LIKE ? OR t.description LIKE ? OR p.name LIKE ?)';
     const like = `%${filters.search}%`;
     params.push(like, like, like);
   }
+  return { where, params };
+};
 
-  sql += ` ORDER BY CASE WHEN t.status IN ('COMPLETED', 'CANCELLED') THEN 1 ELSE 0 END, t.deadline ASC, ${PRIORITY_ORDER}, t.id DESC`;
-  return ex.query(sql, params);
+/** Filtered task list. `filters.limit` (+ `filters.offset`) returns one page instead of every row. */
+export const getAllTasks = (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = taskWhere(filters);
+  const order = ` ORDER BY CASE WHEN t.status IN ('COMPLETED', 'CANCELLED') THEN 1 ELSE 0 END, t.deadline ASC, ${PRIORITY_ORDER}, t.id DESC`;
+  const page = withPage(`${TASK_SELECT}${where}${order}`, params, filters);
+  return ex.query(page.sql, page.params);
+};
+
+export const countTasks = async (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = taskWhere(filters);
+  const row = await ex.queryOne(`SELECT COUNT(*) AS c ${TASK_FROM}${where}`, params);
+  return Number(row.c);
+};
+
+/** Number of tasks per status (tab badges), ignoring any status filter. */
+export const countTasksByStatus = async (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = taskWhere({ ...filters, status: undefined });
+  const rows = await ex.query(`SELECT t.status, COUNT(*) AS c ${TASK_FROM}${where} GROUP BY t.status`, params);
+  return Object.fromEntries(rows.map((r) => [r.status, Number(r.c)]));
 };
 
 export const getTaskById = (id, ex = defaultExecutor) => ex.queryOne(`${TASK_SELECT} WHERE t.id = ? LIMIT 1`, [id]);
@@ -179,13 +203,22 @@ export const addHistory = (taskId, actorId, action, details, ex = defaultExecuto
     details ?? null
   ]);
 
-export const getHistory = (taskId, ex = defaultExecutor) =>
-  ex.query(
+/** Newest first; `page` ({ limit, offset }) is optional. */
+export const getHistory = (taskId, page = {}, ex = defaultExecutor) => {
+  const { sql, params } = withPage(
     `SELECT h.*, u.email AS actor_email, u.role AS actor_role, e.full_name AS actor_name
      FROM task_history h
      INNER JOIN users u ON u.id = h.actor_id
      LEFT JOIN employees e ON e.user_id = h.actor_id
      WHERE h.task_id = ?
      ORDER BY h.created_at DESC, h.id DESC`,
-    [taskId]
+    [taskId],
+    page
   );
+  return ex.query(sql, params);
+};
+
+export const countHistory = async (taskId, ex = defaultExecutor) => {
+  const row = await ex.queryOne('SELECT COUNT(*) AS c FROM task_history WHERE task_id = ?', [taskId]);
+  return Number(row.c);
+};

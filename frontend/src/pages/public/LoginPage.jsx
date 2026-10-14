@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { Eye, EyeOff, Hourglass, Lock, Mail } from 'lucide-react'
 import DemoAccounts from '../../components/DemoAccounts'
+import DemoNotice from '../../components/DemoNotice'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Field, FormError, Input } from '../../components/ui'
 import AuthShell from './AuthShell'
@@ -116,6 +117,7 @@ export default function LoginPage() {
       <div className="my-8 flex items-center gap-3 text-xs font-medium text-slate-400">
         <span className="h-px flex-1 bg-slate-200" /> or try a demo account <span className="h-px flex-1 bg-slate-200" />
       </div>
+      <DemoNotice variant="inline" className="mb-4" />
       <DemoAccounts compact />
     </AuthShell>
   )

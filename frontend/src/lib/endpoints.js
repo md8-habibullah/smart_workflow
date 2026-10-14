@@ -1,6 +1,10 @@
 import { api } from './api';
 
-/** One place that lists every backend endpoint the UI uses. */
+/**
+ * One place that lists every backend endpoint the UI uses.
+ * `page*` helpers take { limit, offset, ...filters } and resolve to { data, total }
+ * (total from the X-Total-Count header); see lib/usePagedQuery.js.
+ */
 
 export const authApi = {
   login: (email, password) => api.post('/auth/login', { email, password }),
@@ -26,15 +30,19 @@ export const dashboardApi = {
 
 export const tasksApi = {
   list: (filters) => api.get('/tasks', filters),
+  page: (params) => api.page('/tasks', params),
+  summary: (filters) => api.get('/tasks/summary', filters),
   get: (id) => api.get(`/tasks/${id}`),
   create: (data) => api.post('/tasks', data),
   update: (id, data) => api.patch(`/tasks/${id}`, data),
   remove: (id) => api.del(`/tasks/${id}`),
   setStatus: (id, status, note) => api.patch(`/tasks/${id}/status`, { status, note: note || undefined }),
   history: (id) => api.get(`/tasks/${id}/history`),
+  historyPage: (id, params) => api.page(`/tasks/${id}/history`, params),
   recommendations: (id) => api.get(`/tasks/${id}/recommendations`),
   assign: (id, employeeId, force = false) => api.post(`/tasks/${id}/assign`, { employeeId, force }),
   autoAssign: (id) => api.post(`/tasks/${id}/auto-assign`),
+  autoAllocate: ({ taskIds, dryRun } = {}) => api.post('/tasks/auto-allocate', { taskIds, dryRun }),
   reassign: (id, newEmployeeId, reassignmentReason, force = false) =>
     api.post(`/tasks/${id}/reassign`, { newEmployeeId, reassignmentReason: reassignmentReason || undefined, force }),
   unassign: (id, reason) => api.post(`/tasks/${id}/unassign`, { reason: reason || undefined }),
@@ -57,6 +65,7 @@ export const tasksApi = {
 
 export const employeesApi = {
   list: (filters) => api.get('/employees', filters),
+  page: (params) => api.page('/employees', params),
   get: (id) => api.get(`/employees/${id}`),
   update: (id, data) => api.patch(`/employees/${id}`, data),
   skills: (id) => api.get(`/employees/${id}/skills`),
@@ -94,6 +103,7 @@ export const adminApi = {
   approve: (userId) => api.post(`/admin/registrations/${userId}/approve`),
   reject: (userId, rejectionReason) => api.post(`/admin/registrations/${userId}/reject`, { rejectionReason }),
   users: (params) => api.get('/admin/users', params),
+  usersPage: (params) => api.page('/admin/users', params),
   createUser: (data) => api.post('/admin/users', data),
   changeRole: (userId, role) => api.patch(`/admin/users/${userId}/role`, { role }),
   setActive: (userId, isActive) => api.patch(`/admin/users/${userId}/status`, { isActive }),
@@ -106,6 +116,7 @@ export const settingsApi = {
   saveEmail: (data) => api.put('/settings/email', data),
   testEmail: (to, settings) => api.post('/settings/email/test', { to, settings }),
   outbox: (params) => api.get('/settings/email/outbox', params),
+  outboxPage: (params) => api.page('/settings/email/outbox', params),
   outboxMessage: (id) => api.get(`/settings/email/outbox/${id}`),
   retry: (id) => api.post(`/settings/email/outbox/${id}/retry`),
   flush: () => api.post('/settings/email/outbox/flush'),
@@ -122,6 +133,7 @@ export const reportsApi = {
 
 export const notificationsApi = {
   list: (params) => api.get('/notifications', params),
+  page: (params) => api.page('/notifications', params),
   markRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
   remove: (id) => api.del(`/notifications/${id}`)

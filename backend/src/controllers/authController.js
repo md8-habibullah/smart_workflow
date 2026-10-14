@@ -4,6 +4,7 @@ import * as employeeRepository from '../repositories/employeeRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 import { UPLOAD_KINDS, removeUploadedFile } from '../middleware/upload.js';
 import { badRequest } from '../utils/errors.js';
+import { assertNotProtectedDemoAccount } from '../utils/demo.js';
 import {
   registerSchema,
   loginSchema,
@@ -31,6 +32,7 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const data = updateProfileSchema.parse(req.body);
+  assertNotProtectedDemoAccount(req.user.email, 'editing the profile');
   if (req.user.employeeId) {
     await employeeRepository.updateEmployee(req.user.employeeId, data);
   }

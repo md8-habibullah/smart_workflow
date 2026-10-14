@@ -58,6 +58,7 @@ All foreign keys are enforced (`PRAGMA foreign_keys = ON`). Deleting a task casc
 | 2 | `tasks.completed_at`; one-current-assignment unique index; extra indexes; replaces the broken legacy seed password hash with a real bcrypt hash of `password123` |
 | 3 | `users.avatar_file`; `attachments` table + index (file uploads) |
 | 4 | `users.password_changed_at` (session revocation); `email_settings` (single row, id = 1), `email_outbox` (+ status/next-attempt index), `password_resets` (SHA-256 token hashes) |
+| 5 | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (no-op otherwise) |
 
 **Adding a change:** append a new function to `migrations`, never edit a released one. `GET /api/health` reports `schemaVersion`.
 

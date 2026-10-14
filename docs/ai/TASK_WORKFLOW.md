@@ -5,7 +5,7 @@ Source: `TRANSITIONS` in [`backend/src/services/taskService.js`](../../backend/s
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING: admin creates
-    PENDING --> ASSIGNED: assign / auto-assign (admin)
+    PENDING --> ASSIGNED: assign / auto-assign / auto-allocate (admin)
     ASSIGNED --> IN_PROGRESS: start (assignee/admin)<br/>or first work log
     IN_PROGRESS --> REVIEW: submit (assignee/admin)
     REVIEW --> COMPLETED: approve (admin)
@@ -29,6 +29,8 @@ stateDiagram-v2
 | Create / edit | Admin | Project exists and isn't archived; deadline in the future; skills exist. Closed tasks are read-only. |
 | Delete | Admin | Only `PENDING` or `CANCELLED` (cancel first otherwise). |
 | Assign | Admin | Task open and unassigned; employee active, approved, `EMPLOYEE` role, eligible (or `force`). |
+| Auto-assign (*Assign best match*) | Admin | Same checks; picks the top eligible candidate inside the transaction; 409 if nobody is eligible. History `AUTO_ASSIGNED`. |
+| Auto-allocate | Admin | `POST /tasks/auto-allocate`: plans every unassigned `PENDING` task in non-archived projects (or the given `taskIds`) with the batch planner. `dryRun` previews; applying re-plans and assigns everything in **one transaction** (all or nothing), each as `AUTO_ASSIGNED` with a notification. Tasks nobody can take are reported and stay `PENDING`. |
 | Reassign | Admin | Currently assigned to someone else; keeps status; reason stored on the closed assignment. |
 | Unassign | Admin | Returns task to `PENDING`. |
 | Cancel | Admin | Ends the current assignment. |
@@ -47,7 +49,7 @@ Every notification is also e-mailed when the super admin has enabled e-mail and 
 | --- | --- |
 | New self-registration | All admins |
 | Account approved | The user |
-| Task assigned / reassigned to you | New assignee |
+| Task assigned / reassigned to you (incl. auto-assign and auto-allocate) | New assignee |
 | Task taken away (reassign/unassign) | Previous assignee |
 | Employee starts work | All admins |
 | Submitted for review | All admins |

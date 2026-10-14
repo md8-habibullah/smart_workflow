@@ -6,7 +6,7 @@ Related reading: [README.md](../../README.md), [ARCHITECTURE.md](../ai/ARCHITECT
 ---
 
 ### Q: What is the name of your project and what does it do, in one sentence?
-**[Basic]** It is the **Smart Workforce & Task Allocation System**. It helps a manager give each task to the best-suited employee, based on skills, current workload, availability and the deadline. Then it tracks the task through work, review and completion.
+**[Basic]** It is the **Smart Workforce & Task Allocation System**. It helps a manager give each task to the best-suited employee, based on skills, deadlines, current workload, focus and fairness. Then it tracks the task through work, review and completion.
 
 ### Q: What problem does it solve?
 **[Basic]** In many small teams, a manager assigns tasks "by memory" or by asking around. This causes problems:
@@ -32,10 +32,11 @@ The system makes allocation **data-driven and explainable** (every score is show
 | --- | --- |
 | Users, approval of self-registration, roles | Payroll, leave, attendance |
 | Departments, skills, projects, project membership | Real-time chat / WebSockets |
-| Tasks, required skills, smart allocation, auto-assign | Native mobile app |
+| Tasks, required skills, smart allocation, auto-assign, batch auto-allocate | Native mobile app |
 | Workflow, work logs, comments, attachments, history | Multi-company (multi-tenant) support |
 | Notifications + e-mail (outbox), forgot password | Single sign-on (Google/Microsoft login) |
 | Dashboards, 5 reports, CSV export | Machine-learning predictions |
+| Public demo deployment on Vercel (temporary data) | Persistent cloud database |
 
 The original version had Leave/Payroll menu items with no backend; they were removed (see [AUDIT_REPORT.md](../ai/AUDIT_REPORT.md)).
 
@@ -51,7 +52,7 @@ The original version had Leave/Payroll menu items with no backend; they were rem
 ### Q: How does a new employee get an account?
 **[Basic]** Two ways:
 1. **Self-registration** (`POST /api/auth/register`). The account starts as `PENDING`; login is blocked until an admin approves it. All admins get a notification.
-2. **Admin creates it** (`POST /api/admin/users`). It is `APPROVED` immediately. Only a super admin can create admin-role accounts ([adminController.js](../../backend/src/controllers/adminController.js) lines 78–85).
+2. **Admin creates it** (`POST /api/admin/users`). It is `APPROVED` immediately. Only a super admin can create admin-role accounts ([adminController.js](../../backend/src/controllers/adminController.js) lines 86–93).
 
 ### Q: Why did you build a web application and not a mobile app?
 **[Intermediate]**
@@ -64,10 +65,10 @@ The original version had Leave/Payroll menu items with no backend; they were rem
 ### Q: What is novel or "smart" about your system compared to Trello or Jira?
 **[Intermediate]** Trello and Jira track tasks, but **a human still chooses the assignee**. Our system:
 - Filters candidates by **hard rules** (required skills at a minimum level, project membership, active approved employee).
-- Ranks eligible candidates with a **weighted, explainable score**: skill depth 40%, workload 25%, availability 20%, deadline fit 15%.
-- Shows **why** someone is ineligible ("Lacks required skill: Node.js") and warnings ("Only 6h free before the deadline").
+- Ranks eligible candidates with a **weighted, explainable score**: skill fit 35% (experts for critical work, "just qualified" people for routine work), deadline fit 25% (an earliest-deadline-first simulation of the person's queue), workload 20%, focus 10%, fairness 10%.
+- Shows **why** someone is ineligible ("Lacks required skill: Node.js"), warnings ("Would push "X" past its deadline"), the projected finish date and a confidence level.
 - Uses **remaining hours** (estimate minus logged hours), so workload falls as people log work.
-- Can **auto-assign** the top candidate in one atomic step.
+- Can **auto-assign** the top candidate in one atomic step, or **auto-allocate** every pending task at once with a regret-based batch planner.
 
 ### Q: Which technologies did you use and why?
 **[Basic]**
@@ -87,10 +88,11 @@ The original version had Leave/Payroll menu items with no backend; they were rem
 ### Q: How do you run the project?
 **[Basic]** From the repository root:
 ```bash
-npm run setup   # install root, backend and frontend packages
+npm install     # one npm workspace: installs backend and frontend
 npm run dev     # API on :5000 and React on :5173
 ```
-Open http://localhost:5173 and sign in, for example as `admin@smartworkflow.org` / `password123`. On first start, the database file is created, migrated and filled with demo data automatically ([db.js](../../backend/src/config/db.js) lines 63–78).
+There is one lockfile and one optional config file, the root `.env` (template `.env.example`). The same repo also deploys to Vercel as a public demo.
+Open http://localhost:5173 and sign in, for example as `admin@smartworkflow.org` / `password123`. On first start, the database file is created, migrated and filled with demo data automatically ([db.js](../../backend/src/config/db.js) lines 66–83).
 
 ### Q: What demo data does the system contain?
 **[Basic]** [seedData.js](../../backend/src/config/seedData.js) creates 9 users (1 super admin, 1 admin, 7 employees, one of them `PENDING`), 4 departments, 11 skills, 3 projects (one is members-only), and 15 tasks in every status. This includes an overdue task (task 8), a task nobody is qualified for (task 10, "Video Editing"), and 6 completed tasks with work logs, comments and history. Dates are relative to "now" (`'+5 days'`), so the demo always looks fresh.
@@ -100,23 +102,24 @@ Open http://localhost:5173 and sign in, for example as `admin@smartworkflow.org`
 - **Single process, single DB connection** (sql.js). Good for a team of tens of users, not for thousands of concurrent users. Every write re-exports the whole DB file.
 - **No real-time updates.** Notifications are polled every 30 s ([AppLayout.jsx](../../frontend/src/components/layout/AppLayout.jsx)).
 - **JWT stored in `localStorage`**, so an XSS bug could steal it (we reduce XSS risk, but an httpOnly cookie would be stronger).
-- **Allocation is greedy, one task at a time**; it does not optimise many tasks together.
+- **The batch planner is a heuristic** (regret-based greedy), not a proven optimum; capacity ignores holidays and leave.
 - **Weights are fixed constants**, chosen by reasoning, not learned from data.
-- `backend/.env` and the demo `.db` file are committed to git (fine for a demo, wrong for production).
+- The demo `.db` file is committed to git, and an old `backend/.env` with a development secret is still in the git history (the current `.env` is git-ignored).
+- **The Vercel deployment is a demo**: its database is in memory and reseeded on every cold start.
 - No automated end-to-end browser test is committed (only backend integration tests).
 
 ### Q: What future work would you do?
 **[Intermediate]**
 - Move to PostgreSQL (the repository layer makes this a contained change).
 - WebSockets or Server-Sent Events for live notifications.
-- Batch allocation (assign many tasks at once with an optimisation algorithm such as the Hungarian method).
+- A persistent hosted database (e.g. Turso/libSQL or PostgreSQL) so the Vercel deployment keeps its data.
 - Learn weights from history (which assignments finished on time).
 - httpOnly cookie sessions + CSRF protection; two-factor login.
 - Calendar awareness (holidays, leave) in the deadline-fit calculation.
 - Committed Playwright end-to-end tests in CI.
 
 ### Q: How big is the project?
-**[Basic]** About 5,200 lines of backend source (62 files in `backend/src`), about 1,300 lines of tests (106 integration tests in 9 test files), and about 8,700 lines of React code in 48 files. The database has 18 tables after 4 migrations.
+**[Basic]** About 6,000 lines of backend source (65 files in `backend/src`), about 1,750 lines of tests (157 integration tests in 12 test files), and about 9,700 lines of React code in 56 files. The database has 18 tables after 5 migrations.
 
 ### Q: What did you personally learn from this project?
 **[Basic]** (Adapt to your own experience.) Good points to mention: designing a layered backend; why transactions matter (and how a shared connection breaks them); writing a state machine; designing a fair, explainable scoring function; secure password and token handling; the transactional outbox pattern for e-mail; writing integration tests that catch real bugs (for example the login backdoor and the privilege-escalation bug).

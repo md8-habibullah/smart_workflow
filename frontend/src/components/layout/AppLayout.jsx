@@ -31,6 +31,8 @@ import { RoleBadge } from '../badges'
 import Logo, { LogoMark } from '../Logo'
 import CommandPalette, { useCommandPalette } from '../CommandPalette'
 import { useSidebar } from './useSidebar'
+import DemoNotice from '../DemoNotice'
+import { CrashScreen, ErrorBoundary } from '../ErrorBoundary'
 
 const ADMIN_NAV = [
   { section: 'Overview' },
@@ -143,6 +145,17 @@ function Sidebar({ onNavigate, collapsed = false, onToggle }) {
               </>
             )}
           </button>
+          {!collapsed && (
+            <a
+              href="https://habibullah.dev"
+              target="_blank"
+              rel="author noopener"
+              title="MD. Habibullah Sharif · github.com/md8-habibullah"
+              className="mt-1 block truncate px-3 text-[10px] tracking-wide text-brand-100/25 transition hover:text-brand-100/70"
+            >
+              crafted by Habibullah · habibullah.dev
+            </a>
+          )}
         </div>
       ) : (
         <div className="border-t border-white/10 p-4">
@@ -365,6 +378,7 @@ export default function AppLayout() {
       )}
 
       <div className={cn('lg:pl-[var(--sidebar-w)]', !sidebar.dragging && 'transition-[padding] duration-200 ease-out')}>
+        <DemoNotice />
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur sm:px-6">
           <IconButton icon={Menu} label="Open menu" onClick={() => setMobileOpen(true)} className="lg:hidden" />
           <div className="lg:hidden">
@@ -385,7 +399,10 @@ export default function AppLayout() {
           <UserMenu />
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Outlet />
+          {/* A crashing page shows an error card inside the shell; any navigation resets it. */}
+          <ErrorBoundary resetKey={location.key} fallback={(props) => <CrashScreen {...props} />}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       </div>

@@ -302,6 +302,14 @@ const migrations = [
       );
       CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
     `);
+  },
+
+  // 5 — repair: databases that ran an early build of migration 4 lack users.password_changed_at
+  (db) => {
+    const userColumns = db.exec('PRAGMA table_info(users)')[0].values.map((row) => row[1]);
+    if (!userColumns.includes('password_changed_at')) {
+      db.exec('ALTER TABLE users ADD COLUMN password_changed_at TEXT NULL');
+    }
   }
 ];
 

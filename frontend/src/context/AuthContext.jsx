@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { setUnauthorizedHandler, tokenStore } from '../lib/api'
+import toast from 'react-hot-toast'
+import { isUnexpectedError, setUnauthorizedHandler, tokenStore } from '../lib/api'
 import { authApi } from '../lib/endpoints'
 
 const AuthContext = createContext(null)
@@ -23,30 +24,51 @@ export function AuthProvider({ children }) {
     queryClient.clear()
   }, [queryClient])
 
-  // Any 401 from an authenticated request ends the session.
+  // Any 401 from an authenticated request ends the session. Several requests can fail at
+  // once, so the "session expired" message is shown a single time per session.
+  const statusRef = useRef(status)
   useEffect(() => {
-    setUnauthorizedHandler(logout)
+    statusRef.current = status
+  }, [status])
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (statusRef.current === 'authenticated') {
+        toast.error('Your session has expired. Please sign in again.', { id: 'session-expired' })
+      }
+      // RequireAuth then redirects to /login, remembering the page in `from`.
+      logout()
+    })
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
-  // Validate a stored token on startup.
+  // Validate a stored token on startup. If the server is unreachable or failing, the token
+  // is kept and validation retried (NetworkStatus shows a banner meanwhile): an outage must
+  // not sign people out. Only a real rejection (401/403…) ends the session.
   useEffect(() => {
     if (!tokenStore.get()) return
     let cancelled = false
-    authApi
-      .me()
-      .then((me) => {
-        if (cancelled) return
-        setUser(me)
-        setStatus('authenticated')
-      })
-      .catch(() => {
-        if (cancelled) return
-        tokenStore.clear()
-        setStatus('anonymous')
-      })
+    let timer = null
+    const validate = () =>
+      authApi
+        .me()
+        .then((me) => {
+          if (cancelled) return
+          setUser(me)
+          setStatus('authenticated')
+        })
+        .catch((error) => {
+          if (cancelled) return
+          if (isUnexpectedError(error)) {
+            timer = setTimeout(validate, 5000)
+            return
+          }
+          tokenStore.clear()
+          setStatus('anonymous')
+        })
+    validate()
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [])
 

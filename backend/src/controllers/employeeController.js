@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { badRequest, forbidden, notFound, parseId } from '../utils/errors.js';
+import { setTotalCount } from '../utils/pagination.js';
 import * as employeeRepository from '../repositories/employeeRepository.js';
 import * as departmentRepository from '../repositories/departmentRepository.js';
 import * as skillRepository from '../repositories/skillRepository.js';
@@ -9,7 +10,12 @@ import { employeeUpdateSchema, employeeListQuery } from '../validators/schemas.j
 
 export const getAllEmployees = asyncHandler(async (req, res) => {
   const filters = employeeListQuery.parse(req.query);
-  res.status(200).json({ success: true, data: await employeeRepository.listEmployees(filters) });
+  const [employees, total] = await Promise.all([
+    employeeRepository.listEmployees(filters),
+    filters.limit ? employeeRepository.countEmployees(filters) : null
+  ]);
+  setTotalCount(res, total ?? employees.length);
+  res.status(200).json({ success: true, data: employees });
 });
 
 /** Full profile: skills, current tasks and recent work. Employees may only view their own. */

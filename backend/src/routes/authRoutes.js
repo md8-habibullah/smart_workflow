@@ -3,6 +3,7 @@ import * as authController from '../controllers/authController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { authRateLimiter } from '../middleware/rateLimiters.js';
 import { avatarUpload } from '../middleware/upload.js';
+import { requireUploadsEnabled } from '../utils/demo.js';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get('/me', authenticate, authController.getCurrentUser);
 router.get('/profile', authenticate, authController.getCurrentUser);
 router.patch('/profile', authenticate, authController.updateProfile);
 router.post('/change-password', authenticate, authController.changePassword);
-router.post('/avatar', authenticate, avatarUpload, authController.uploadAvatar);
+router.post('/avatar', authenticate, requireUploadsEnabled, avatarUpload, authController.uploadAvatar);
 router.delete('/avatar', authenticate, authController.deleteAvatar);
 
 export default router;

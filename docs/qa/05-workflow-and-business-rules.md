@@ -73,6 +73,7 @@ The original code had no status endpoint at all, so tasks could never be complet
 | Create / edit task | Admin | project exists and not archived; deadline in the future; skills exist; terminal tasks can't be edited |
 | Delete task | Admin | only PENDING or CANCELLED; files deleted from disk too |
 | Assign / auto-assign | Admin | task open and unassigned; employee eligible (or `force`) |
+| Auto-allocate (many tasks) | Admin | every unassigned PENDING task in non-archived projects (or given `taskIds`); only eligible people; all-or-nothing transaction |
 | Reassign | Admin | task assigned to someone else; status kept; reason stored |
 | Unassign | Admin | any non-terminal task; goes back to PENDING |
 | Start / submit | Assignee or admin | per state machine |
@@ -89,6 +90,9 @@ The original code had no status endpoint at all, so tasks could never be complet
 
 ### Q: What happens to the status when you reassign a task?
 **[Intermediate]** It is **kept**. The comment on line 226 says: "Reassigning keeps in-flight work in progress; a fresh assignment starts at ASSIGNED." So an IN_PROGRESS task stays IN_PROGRESS with the new person. The old assignment row is closed with the reason, the new one is inserted, history says "Reassigned from A to B. Reason: …", and both people are notified.
+
+### Q: What happens in the workflow when an admin presses Auto-allocate?
+**[Intermediate]** The dialog first calls `POST /api/tasks/auto-allocate` with `dryRun: true` and shows the plan (who gets what, score, runner-up, confidence, and tasks nobody can take). Nothing changes yet. **Apply** sends the request without `dryRun`; `taskService.autoAllocate` (lines 305–315) re-plans inside **one transaction** and, for each planned task, runs the same `assignWithin` as a manual assignment with action `AUTO_ASSIGNED`: assignment row, PENDING → ASSIGNED, history ("Assigned to … (score N)") and a notification (plus e-mail via the outbox). If anything fails, everything is rolled back. Tasks nobody can take stay PENDING. The algorithm is explained in [04-allocation-algorithm.md](04-allocation-algorithm.md).
 
 ### Q: What happens when you unassign?
 **[Basic]** `unassignTask` (lines 277–287): closes the current assignment, sets status to **PENDING**, writes history `UNASSIGNED`, and notifies the previous assignee. Work logs stay (they belong to the task), so remaining hours are still correct when it is reassigned.

@@ -4,6 +4,7 @@ import { Camera, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { authApi } from '../lib/endpoints'
 import { Avatar, Button, Spinner } from './ui'
+import { useServerOptions } from './DemoNotice'
 
 const TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -12,6 +13,8 @@ export default function AvatarUploader() {
   const { user, displayName, refreshUser } = useAuth()
   const inputRef = useRef(null)
   const [busy, setBusy] = useState(false)
+  const { data: serverOptions } = useServerOptions()
+  const uploadsOff = serverOptions?.uploadsEnabled === false
 
   const pick = async (file) => {
     if (!file) return
@@ -49,7 +52,7 @@ export default function AvatarUploader() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={busy}
+          disabled={busy || uploadsOff}
           className="absolute -right-1 -bottom-1 flex size-9 items-center justify-center rounded-full bg-brand-600 text-white shadow-md ring-4 ring-white transition hover:bg-brand-700"
           aria-label="Change profile photo"
         >
@@ -67,7 +70,7 @@ export default function AvatarUploader() {
         }}
       />
       <div className="mt-3 flex gap-2">
-        <Button size="xs" variant="secondary" icon={Camera} onClick={() => inputRef.current?.click()} disabled={busy}>
+        <Button size="xs" variant="secondary" icon={Camera} onClick={() => inputRef.current?.click()} disabled={busy || uploadsOff} title={uploadsOff ? 'Uploads are off on the public demo' : undefined}>
           {user?.avatarUrl ? 'Change photo' : 'Upload photo'}
         </Button>
         {user?.avatarUrl && (

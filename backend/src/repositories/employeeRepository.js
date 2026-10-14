@@ -1,4 +1,5 @@
 import { defaultExecutor } from '../config/db.js';
+import { withPage } from '../utils/pagination.js';
 
 /** Remaining effort on a task = estimate minus hours already logged (never negative). */
 export const REMAINING_HOURS_SQL = `
@@ -46,26 +47,42 @@ export const findEmployeeById = (id, ex = defaultExecutor) =>
 export const findEmployeeByUserId = (userId, ex = defaultExecutor) =>
   ex.queryOne(`${EMPLOYEE_SELECT} WHERE e.user_id = ? LIMIT 1`, [userId]);
 
-export const listEmployees = ({ departmentId, search, status, role } = {}, ex = defaultExecutor) => {
-  let sql = `${EMPLOYEE_SELECT} WHERE 1 = 1`;
+const employeeWhere = ({ departmentId, search, status, role } = {}) => {
+  let where = ' WHERE 1 = 1';
   const params = [];
   if (departmentId) {
-    sql += ' AND e.department_id = ?';
+    where += ' AND e.department_id = ?';
     params.push(departmentId);
   }
-  if (status === 'ACTIVE') sql += ` AND e.is_active = 1 AND u.is_active = 1 AND u.approval_status = 'APPROVED'`;
-  if (status === 'INACTIVE') sql += ` AND (e.is_active = 0 OR u.is_active = 0)`;
+  if (status === 'ACTIVE') where += ` AND e.is_active = 1 AND u.is_active = 1 AND u.approval_status = 'APPROVED'`;
+  if (status === 'INACTIVE') where += ` AND (e.is_active = 0 OR u.is_active = 0)`;
   if (role) {
-    sql += ' AND u.role = ?';
+    where += ' AND u.role = ?';
     params.push(role);
   }
   if (search) {
-    sql += ' AND (e.full_name LIKE ? OR e.employee_code LIKE ? OR u.email LIKE ? OR e.job_position LIKE ?)';
+    where += ' AND (e.full_name LIKE ? OR e.employee_code LIKE ? OR u.email LIKE ? OR e.job_position LIKE ?)';
     const like = `%${search}%`;
     params.push(like, like, like, like);
   }
-  sql += ' ORDER BY e.full_name ASC';
-  return ex.query(sql, params);
+  return { where, params };
+};
+
+/** Directory list; `filters.limit` (+ `filters.offset`) returns one page. */
+export const listEmployees = (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = employeeWhere(filters);
+  // e.id breaks ties so pages never overlap or skip people with the same name.
+  const page = withPage(`${EMPLOYEE_SELECT}${where} ORDER BY e.full_name ASC, e.id ASC`, params, filters);
+  return ex.query(page.sql, page.params);
+};
+
+export const countEmployees = async (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = employeeWhere(filters);
+  const row = await ex.queryOne(
+    `SELECT COUNT(*) AS c FROM employees e INNER JOIN users u ON u.id = e.user_id ${where}`,
+    params
+  );
+  return Number(row.c);
 };
 
 export const updateEmployee = (id, fields, ex = defaultExecutor) => {

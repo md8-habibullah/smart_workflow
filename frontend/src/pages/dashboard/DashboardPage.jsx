@@ -30,6 +30,7 @@ import { Avatar, Badge, Button, Card, CardHeader, EmptyState, ProgressBar, Query
 import { PriorityBadge } from '../../components/badges'
 import TaskCard from '../../components/TaskCard'
 import TaskFormModal from '../../components/TaskFormModal'
+import { MAGIC_TITLE, MagicIcon, magicChipClass } from '../../components/MagicBadge'
 
 const GREEN = '#039855'
 const GREEN_SOFT = '#a6f4c5'
@@ -84,7 +85,8 @@ export default function DashboardPage() {
 const ACTIVITY_STYLE = {
   CREATED: { icon: Plus, className: 'bg-slate-100 text-slate-600' },
   ASSIGNED: { icon: UserCheck, className: 'bg-blue-50 text-blue-600' },
-  AUTO_ASSIGNED: { icon: UserCheck, className: 'bg-blue-50 text-blue-600' },
+  // Decided by the allocation engine, so it gets the "automatic decision" marker.
+  AUTO_ASSIGNED: { icon: MagicIcon, className: magicChipClass, title: MAGIC_TITLE },
   REASSIGNED: { icon: Users, className: 'bg-blue-50 text-blue-600' },
   UNASSIGNED: { icon: Users, className: 'bg-slate-100 text-slate-600' },
   STATUS_CHANGED: { icon: CheckCircle2, className: 'bg-brand-50 text-brand-700' },
@@ -100,12 +102,13 @@ function ActivityFeed({ items }) {
         const style = ACTIVITY_STYLE[a.action] || ACTIVITY_STYLE.CREATED
         return (
           <li key={a.id} className="flex gap-3">
-            <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', style.className)}>
+            <span title={style.title} className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', style.className)}>
               <style.icon className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-slate-700">
                 <span className="font-semibold text-slate-900">{a.actor_name}</span> · {a.details}
+                {style.title && <span className="sr-only"> ({style.title})</span>}
               </p>
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
                 <Link to={`/app/tasks/${a.task_id}`} className="truncate font-medium hover:text-brand-700">

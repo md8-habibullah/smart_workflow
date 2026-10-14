@@ -2,6 +2,7 @@ import initSqlJs from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { env } from './env.js';
 import { runMigrations, SCHEMA_VERSION } from './schema.js';
 import { populateSeedData } from './seedData.js';
@@ -20,7 +21,9 @@ const inMemory = env.DB_FILE === ':memory:';
 const dbDir = path.resolve(__dirname, '../../data');
 const dbPath = inMemory ? null : path.resolve(dbDir, env.DB_FILE);
 
-const SQL = await initSqlJs();
+// Locate the WebAssembly binary explicitly so serverless bundlers (Vercel) can ship it.
+const sqlJsDir = path.dirname(createRequire(import.meta.url).resolve('sql.js'));
+const SQL = await initSqlJs({ locateFile: (file) => path.join(sqlJsDir, file) });
 
 const openDatabase = () => {
   if (dbPath && fs.existsSync(dbPath)) {

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { ArrowLeft, Info, Mail, MailCheck } from 'lucide-react'
 import { authApi } from '../../lib/endpoints'
 import { Button, Field, FormError, Input } from '../../components/ui'
 import AuthShell from './AuthShell'
+import { useServerOptions } from '../../components/DemoNotice'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const options = useQuery({ queryKey: ['auth-options'], queryFn: authApi.options, staleTime: 60_000 })
+  const options = useServerOptions()
   const send = useMutation({ mutationFn: () => authApi.forgotPassword(email.trim()) })
   const unavailable = options.data && !options.data.passwordResetByEmail
 

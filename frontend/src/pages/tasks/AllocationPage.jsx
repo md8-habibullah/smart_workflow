@@ -2,18 +2,28 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { AlertTriangle, Award, CalendarClock, ChevronDown, Gauge, Info, Target, UserCheck, Users, XCircle } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ChevronDown, Focus, Gauge, Info, Scale, Target, UserCheck, XCircle } from 'lucide-react'
 import { tasksApi } from '../../lib/endpoints'
-import { hours } from '../../lib/format'
+import { formatDateTime, hours } from '../../lib/format'
 import { Avatar, Badge, Button, Card, EmptyState, Field, FormError, Modal, PageHeader, QueryView, Textarea, cn } from '../../components/ui'
 import { Deadline, ProficiencyBadge, StatusBadge } from '../../components/badges'
+import { MagicBadge, MagicIcon, MagicIconSolid, magicButtonClass } from '../../components/MagicBadge'
 
+/** Mirrors WEIGHTS in backend/src/services/allocationScoring.js (v2). */
 const COMPONENTS = [
-  { key: 'skillMatch', label: 'Skill match', weight: 40, icon: Target, color: 'bg-brand-500' },
-  { key: 'workloadBalance', label: 'Workload', weight: 25, icon: Gauge, color: 'bg-blue-500' },
-  { key: 'availability', label: 'Availability', weight: 20, icon: Users, color: 'bg-emerald-500' },
-  { key: 'deadlineFit', label: 'Deadline fit', weight: 15, icon: CalendarClock, color: 'bg-violet-500' },
+  { key: 'skillMatch', label: 'Skill fit', weight: 35, icon: Target, color: 'bg-brand-500', hint: 'Experts for critical work, "just qualified" people for routine work' },
+  { key: 'deadlineFit', label: 'Deadline fit', weight: 25, icon: CalendarClock, color: 'bg-violet-500', hint: "Simulates the person's queue (earliest deadline first), incl. damage to their other tasks" },
+  { key: 'workloadBalance', label: 'Workload', weight: 20, icon: Gauge, color: 'bg-blue-500', hint: 'Projected utilisation until the deadline' },
+  { key: 'focus', label: 'Focus', weight: 10, icon: Focus, color: 'bg-emerald-500', hint: 'Fewer parallel tasks; same project helps' },
+  { key: 'fairness', label: 'Fairness', weight: 10, icon: Scale, color: 'bg-amber-500', hint: 'Rotates work: recent assignments count against you, fading over time' },
 ]
+
+const CONFIDENCE = {
+  CLEAR: { label: 'Clear winner', tone: 'green' },
+  GOOD: { label: 'Good lead', tone: 'brand' },
+  CLOSE: { label: 'Close call', tone: 'amber' },
+  ONLY_OPTION: { label: 'Only eligible person', tone: 'blue' },
+}
 
 const scoreTone = (s) => (s >= 80 ? 'text-emerald-600' : s >= 60 ? 'text-amber-600' : 'text-red-600')
 
@@ -56,7 +66,14 @@ function Allocation({ data }) {
         actions={
           !isReassign &&
           !closed && (
-            <Button icon={UserCheck} onClick={() => auto.mutate()} loading={auto.isPending} disabled={eligible.length === 0}>
+            <Button
+              icon={MagicIconSolid}
+              onClick={() => auto.mutate()}
+              loading={auto.isPending}
+              disabled={eligible.length === 0}
+              className={magicButtonClass}
+              title="Let the allocation engine assign its top-ranked candidate"
+            >
               Assign best match
             </Button>
           )
@@ -109,20 +126,21 @@ function Allocation({ data }) {
             </div>
             <div className="mt-4 space-y-3">
               {COMPONENTS.map((c) => (
-                <div key={c.key}>
+                <div key={c.key} title={c.hint}>
                   <div className="flex justify-between text-xs text-slate-300">
                     <span>{c.label}</span>
                     <span>{c.weight}%</span>
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-white/10">
-                    <div className={cn('h-full rounded-full', c.color)} style={{ width: `${c.weight * 2.5}%` }} />
+                    <div className={cn('h-full rounded-full', c.color)} style={{ width: `${(c.weight / 35) * 100}%` }} />
                   </div>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-400">{c.hint}</p>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs leading-relaxed text-slate-400">
               Candidates missing a required skill, below the minimum level, or outside a members-only project are
-              ineligible.
+              ineligible. Engine v{data.algorithmVersion}.
             </p>
           </Card>
         </div>
@@ -132,8 +150,18 @@ function Allocation({ data }) {
             <Card className="border-amber-200 bg-amber-50 text-sm text-amber-800">This task is {data.status.toLowerCase()} and cannot be assigned.</Card>
           )}
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
               {eligible.length} eligible candidate{eligible.length === 1 ? '' : 's'}
+              {data.confidence && (
+                <span title="How sure the allocation engine is about its top pick">
+                  <Badge tone={CONFIDENCE[data.confidence.level].tone}>
+                    <MagicIcon solid className="size-3" />
+                    <span className="sr-only">Allocation engine confidence:</span>
+                    {CONFIDENCE[data.confidence.level].label}
+                    {data.confidence.margin != null && ` · +${data.confidence.margin}`}
+                  </Badge>
+                </span>
+              )}
             </h2>
             <span className="text-sm text-slate-500">{data.recommendations.length} evaluated</span>
           </div>
@@ -213,9 +241,7 @@ function CandidateCard({ rec, rank, onAssign, disabled }) {
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold text-slate-900">{rec.employeeName}</p>
               {rank === 1 && (
-                <Badge tone="brand">
-                  <Award className="size-3" /> Best match
-                </Badge>
+                <MagicBadge title="Ranked first by the allocation engine">Best match</MagicBadge>
               )}
               {rec.isCurrentAssignee && <Badge tone="blue">Current assignee</Badge>}
             </div>
@@ -226,6 +252,12 @@ function CandidateCard({ rec, rank, onAssign, disabled }) {
               {rec.workload.activeTaskCount} active task{rec.workload.activeTaskCount === 1 ? '' : 's'} · {hours(rec.workload.outstandingHours)} of{' '}
               {hours(rec.workload.weeklyCapacityHours)} booked · {hours(rec.workload.hoursAvailableBeforeDeadline)} free before deadline
             </p>
+            {rec.insights?.projectedFinish && (
+              <p className={cn('mt-1 text-xs font-medium', rec.insights.bufferDays >= 0 ? 'text-emerald-700' : 'text-red-600')}>
+                Projected finish {formatDateTime(rec.insights.projectedFinish)} ·{' '}
+                {rec.insights.bufferDays >= 0 ? `${rec.insights.bufferDays} day(s) of buffer` : `${Math.abs(rec.insights.bufferDays)} day(s) late`}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
@@ -241,11 +273,11 @@ function CandidateCard({ rec, rank, onAssign, disabled }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-100 pt-4 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-100 pt-4 sm:grid-cols-5">
         {COMPONENTS.map((c) => (
           <div key={c.key}>
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1 text-slate-500">
+              <span className="flex items-center gap-1 text-slate-500" title={c.hint}>
                 <c.icon className="size-3" /> {c.label}
               </span>
               <span className="font-semibold text-slate-800 tabular-nums">{rec.scores[c.key]}</span>

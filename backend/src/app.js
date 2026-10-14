@@ -8,7 +8,7 @@ import helmet from 'helmet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { env, isTest } from './config/env.js';
+import { env, IS_VERCEL, isDemoMode, isTest } from './config/env.js';
 import { SCHEMA_VERSION } from './config/schema.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -25,10 +25,13 @@ import { apiRateLimiter } from './middleware/rateLimiters.js';
 import { serveAvatar } from './controllers/attachmentController.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { TOTAL_COUNT_HEADER } from './utils/pagination.js';
 
 const app = express();
 
 app.disable('x-powered-by');
+// Correct client IPs (rate limiting) behind Vercel or another reverse proxy.
+if (env.TRUST_PROXY) app.set('trust proxy', 1);
 app.use(helmet());
 app.use((req, res, next) => {
   res.setHeader('X-Crafted-By', 'habibullah.dev');
@@ -44,7 +47,9 @@ app.use(
       }
       return callback(null, false);
     },
-    credentials: true
+    credentials: true,
+    // Lets cross-origin clients read pagination totals and the Allow list of a 405.
+    exposedHeaders: [TOTAL_COUNT_HEADER, 'Allow']
   })
 );
 
@@ -60,6 +65,7 @@ app.get('/api/health', (req, res) => {
     schemaVersion: SCHEMA_VERSION,
     timestamp: new Date().toISOString(),
     environment: env.NODE_ENV,
+    demoMode: isDemoMode(),
     author: { name: 'MD. Habibullah Sharif', url: 'https://habibullah.dev', github: 'https://github.com/md8-habibullah' }
   });
 });
@@ -82,7 +88,7 @@ app.use('/api/settings', settingsRoutes);
 // Serve the built React app (frontend/dist) when it exists, with SPA fallback,
 // so `npm run build` + `npm start` runs the whole system from one port.
 const frontendDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
-if (!isTest && fs.existsSync(path.join(frontendDist, 'index.html'))) {
+if (!isTest && !IS_VERCEL && fs.existsSync(path.join(frontendDist, 'index.html'))) {
   app.use(express.static(frontendDist, { index: false, maxAge: '1h' }));
   app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
 }

@@ -3,7 +3,7 @@
 
 # Smart Workforce & Task Allocation System
 
-**Give every task to the best-suited team member, based on skills, workload, availability and deadline. Then follow the work through review to completion.**
+**Give every task to the best-suited team member, based on skills, deadlines, workload, focus and fairness. Then follow the work through review to completion.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
@@ -11,10 +11,11 @@
 [![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-sql.js%20%28WASM%29-003B57?logo=sqlite&logoColor=white)](https://sql.js.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/tests-106%20passing-brightgreen?logo=jest&logoColor=white)](#testing)
+[![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen?logo=jest&logoColor=white)](#testing)
+[![Vercel](https://img.shields.io/badge/deploy-Vercel-000000?logo=vercel&logoColor=white)](#deploy-to-vercel)
 [![License](https://img.shields.io/badge/license-ISC-blue)](#license)
 
-A university full-stack project: an Express REST API on an embedded SQLite database, a React single-page app, and 106 integration tests.
+A university full-stack project: an Express REST API on an embedded SQLite database, a React single-page app, and 157 integration tests. One repository, one `npm install`, one `.env`, deployable as a single Vercel project.
 
 <img src="frontend/public/screenshots/dashboard.jpg" alt="Admin dashboard with KPIs, needs-attention list and 14-day trend" width="100%">
 
@@ -28,6 +29,7 @@ A university full-stack project: an Express REST API on an embedded SQLite datab
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [Quick start](#quick-start)
+- [Deploy to Vercel](#deploy-to-vercel)
 - [Demo accounts](#demo-accounts)
 - [Architecture](#architecture)
 - [Smart allocation algorithm](#smart-allocation-algorithm)
@@ -118,11 +120,14 @@ A university full-stack project: an Express REST API on an embedded SQLite datab
 
 ## Features
 
-### 🎯 Smart allocation
-- Ranked, **explainable** recommendations: skill match 40 %, workload 25 %, availability 20 %, deadline fit 15 %.
+### 🎯 Smart allocation (engine v2)
+- Ranked, **explainable** recommendations from five scores: skill fit 35 %, deadline fit 25 % (earliest-deadline-first schedule simulation), workload balance 20 %, focus 10 %, fairness 10 %.
+- Every recommendation shows **insights** (projected finish, buffer, tasks it would push past their deadline, utilisation) and a **confidence** badge (Clear, Good, Close call, Only option).
 - **Hard eligibility filters** run before scoring: approved and active employee, every required skill at or above the minimum level, and project membership when the project requires it.
-- **Auto-assign** picks the top eligible candidate in one atomic step.
+- **Assign best match** picks the top eligible candidate in one atomic step.
+- **Auto-allocate** plans every pending task at once (regret-based batch planner): preview the plan, then apply it in one transaction.
 - **Reassign** with a reason, **unassign**, and an admin **override** (`force`) that allows assigning an ineligible employee.
+- A **magic wand** icon marks only the decisions made by the algorithm (best match, confidence, auto-allocate, `AUTO_ASSIGNED` history), never decoration.
 
 ### 🗂️ Tasks and workflow
 - Status workflow: Unassigned → Assigned → In progress → Review → Completed, plus cancel and reopen. The server checks the user's role for every transition and records it in the task history.
@@ -159,13 +164,19 @@ A university full-stack project: an Express REST API on an embedded SQLite datab
 ### ⚡ Usability
 - **Command palette** (`Ctrl + K`) to jump to any task, project, employee or page.
 - **Resizable, collapsible sidebar** that the browser remembers (`Ctrl + B`).
+- **Infinite lists**: tasks (list view), employees, users, notifications, task history and the e-mail outbox load one page at a time (20–50 rows) as you scroll, with a "Load more" button as a fallback.
 - **One-click demo login** on the landing and login pages, with copyable credentials.
 - Responsive layout for desktop and mobile.
 
+### 🧯 Error handling
+- API: every failure is a JSON envelope with a meaningful status (400 malformed JSON, 404 unknown route, **405 with an `Allow` header**, 409 duplicates, 413 too large, 415 bad charset, 500 with a **reference id** and no stack trace outside development).
+- UI: **error boundaries** (whole app and per page), a 403 page for admin-only routes, an **offline / server-unreachable banner**, one toast for unexpected failures, a "session expired" message on 401, and an automatic one-time reload when a new deployment replaced the page's code chunks.
+
 ### 🛠️ Engineering
-- **Versioned database migrations** (currently **v4**). The database file is **backed up automatically** before every upgrade.
+- **Versioned database migrations** (currently **v5**). The database file is **backed up automatically** before every upgrade.
 - `npm run db:status`, `db:migrate` and `db:reset`.
-- 106 Jest + supertest integration tests, each test file using an in-memory database.
+- Optional **pagination** (`limit`/`offset`, total in `X-Total-Count`) on every large list, backward compatible.
+- 157 Jest + supertest integration tests in 12 files, each test file using an in-memory database.
 
 ---
 
@@ -174,8 +185,8 @@ A university full-stack project: an Express REST API on an embedded SQLite datab
 **Requirements:** Node.js 20 or newer, and npm. You don't need to install a database: SQLite is embedded.
 
 ```bash
-# 1. Install root, backend and frontend dependencies (Windows: double-click setup.bat)
-npm run setup
+# 1. Install everything: one npm workspace, one lockfile (Windows: double-click setup.bat)
+npm install
 
 # 2. Start the API and the React dev server together
 npm run dev
@@ -187,7 +198,7 @@ npm run dev
 | REST API | http://localhost:5000/api |
 | Health check | http://localhost:5000/api/health |
 
-On first start the backend creates `backend/data/smart_workflow.db`, runs all migrations and loads the demo data. You don't need a `backend/.env` file for local development, because every setting has a default (see [Environment variables](#environment-variables)).
+On first start the backend creates `backend/data/smart_workflow.db`, runs all migrations and loads the demo data. You don't need a `.env` file for local development, because every setting has a default (see [Environment variables](#environment-variables)).
 
 ### Production mode (single server)
 
@@ -196,7 +207,25 @@ npm run build   # builds the React app into frontend/dist
 npm start       # Express serves the API and the built app on one port
 ```
 
-Then open **http://localhost:5000**. For a real deployment, set `NODE_ENV=production` and a random `JWT_SECRET` of at least 32 characters in `backend/.env`.
+Then open **http://localhost:5000**. For a real deployment, set `NODE_ENV=production` in the host's environment (never in `.env`) and a random `JWT_SECRET` of at least 32 characters in the root `.env`.
+
+---
+
+## Deploy to Vercel
+
+The repository deploys as **one Vercel project**: the CDN serves the React build and `/api/*` goes to one serverless function ([`api/index.mjs`](api/index.mjs), the same Express app). `vercel.json` already holds the install, build, function and SPA-routing settings.
+
+1. Push the repository to GitHub and import it in Vercel (**Add New → Project**). Keep the repo root as the root directory and the framework preset "Other".
+2. Optional: add a `JWT_SECRET` environment variable.
+3. Deploy, open the URL and sign in with any demo account (`password123`).
+
+On Vercel the app runs as a **public demo** (`DEMO_MODE`, on by default there):
+
+- The database is **always in memory** and is seeded on every cold start, so visitors can try everything, but **data is temporary** and parallel instances don't share changes.
+- E-mail is LOG-only (SMTP is refused), the built-in `@smartworkflow.org` accounts can't have their password, role, status or profile changed, and uploads are off unless `DEMO_ALLOW_UPLOADS=true`.
+- A small "Public demo" notice is shown in the app and on the login page.
+
+For a permanent deployment, use single-server mode on a host with a persistent disk. Details: [docs/ai/DEPLOYMENT.md](docs/ai/DEPLOYMENT.md).
 
 ---
 
@@ -233,7 +262,7 @@ flowchart LR
     subgraph API["Express 4 API - port 5000"]
         R["Routes<br/>/api/auth, /api/tasks, /api/settings ..."] --> MW["Middleware<br/>helmet, CORS, rate limits,<br/>JWT auth, role guards, multer"]
         MW --> C["Controllers<br/>Zod validation"]
-        C --> S["Services<br/>allocation engine, task workflow,<br/>auth, mail"]
+        C --> S["Services<br/>allocation engine + scoring core,<br/>task workflow, auth, mail"]
         S --> RP["Repositories<br/>parameterised SQL"]
     end
 
@@ -247,18 +276,18 @@ flowchart LR
 | Layer | Responsibility |
 | --- | --- |
 | **Routes** | Map URLs to controllers and attach the middleware each route needs (`authenticate`, `requireAdmin`, `requireSuperAdmin`, upload handlers, auth rate limiter). |
-| **Middleware** | Security headers, CORS, rate limiting, JWT verification (the account is **re-loaded on every request**, so role changes and deactivation take effect immediately), file upload checks, central error handling. |
-| **Controllers** | Parse and validate input with Zod, call a service, shape the JSON response. |
-| **Services** | Business rules: the allocation engine, the task state machine, authentication and password reset, e-mail delivery. Multi-step changes run in **one transaction**. |
+| **Middleware** | Security headers, CORS, rate limiting, JWT verification (the account is **re-loaded on every request**, so role changes and deactivation take effect immediately), file upload checks, 404/405 and central error handling. |
+| **Controllers** | Parse and validate input with Zod (including optional `limit`/`offset` paging), call a service, shape the JSON response. |
+| **Services** | Business rules: the allocation engine (with the pure, dependency-free scoring core `allocationScoring.js`), the task state machine, authentication and password reset, e-mail delivery. Multi-step changes run in **one transaction**. |
 | **Repositories** | All SQL lives here, always with bound parameters. |
 | **sql.js queue** | sql.js keeps the whole database in memory. One exclusive queue makes sure an async transaction never interleaves with another request. After each committed write, the database is saved to disk atomically (write a temp file, then rename it). |
-| **Mail worker** | Started by `server.js`. It wakes when a message is queued and also polls every 15 s for retries. |
+| **Mail worker** | Started by `server.js`. It wakes when a message is queued and also polls every 15 s for retries. On Vercel there are no timers: `api/index.mjs` delivers queued mail right after it is queued. |
 
 ---
 
 ## Smart allocation algorithm
 
-Source: [`backend/src/services/allocationEngine.js`](backend/src/services/allocationEngine.js). Full derivation and worked example: [docs/ai/ALLOCATION_ENGINE.md](docs/ai/ALLOCATION_ENGINE.md).
+Scoring core (pure, no imports): [`backend/src/services/allocationScoring.js`](backend/src/services/allocationScoring.js). Data loading and explanations: [`allocationEngine.js`](backend/src/services/allocationEngine.js). Full derivation: [docs/ai/ALLOCATION_ENGINE.md](docs/ai/ALLOCATION_ENGINE.md).
 
 **Stage 1: hard filters.** If a candidate fails any filter, they are marked ineligible with score 0 and the reasons are listed.
 
@@ -266,32 +295,43 @@ Source: [`backend/src/services/allocationEngine.js`](backend/src/services/alloca
 2. The candidate has **every** required skill at or above the minimum proficiency (Beginner 25, Intermediate 50, Advanced 75, Expert 100).
 3. If the project is members-only, the candidate is a project member.
 
-**Stage 2: weighted score (0–100)** for eligible candidates.
+**Stage 2: five explainable scores (0–100)** for eligible candidates.
 
 | Component | Weight | How it is computed |
 | --- | ---: | --- |
-| **Skill match** | 40 % | For each required skill: meeting the minimum level gives 75, rising linearly to 100 at Expert. The component is the average over required skills, or 100 if the task requires no skills. |
-| **Workload balance** | 25 % | Remaining weekly capacity ÷ weekly capacity × 100. Weekly capacity = daily capacity × 5 days. |
-| **Availability** | 20 % | 100 − 15 × number of active tasks (Assigned, In progress or Review), minimum 0. |
-| **Deadline fit** | 15 % | Free hours before the deadline ÷ the task's remaining hours × 100, capped at 100. The score is 0 if the deadline has passed. |
+| **Skill fit** | 35 % | Per skill, how far above the minimum the person is (0–1), compared with a target set by priority: Critical 1.0, High 0.75, Medium 0.5, Low 0.25. 100 at the target, 75 at the furthest point. Experts go to critical work; routine work goes to someone comfortably qualified. |
+| **Deadline fit** | 25 % | Simulates the person's queue in **earliest-deadline-first** (EDF) order with the new task. On time: 70–100 by the buffer left. Late: 0–60 by how late. **−15 for every existing task it would push past its deadline.** |
+| **Workload balance** | 20 % | `100 · (1 − utilisation)` over the working days until the deadline (clamped to 5–20 days), using remaining hours. |
+| **Focus** | 10 % | `100 − 15 · active tasks`, +10 if the person already works on the same project. |
+| **Fairness** | 10 % | `100 / (1 + 0.5 · Σ e^(−age/7))` over assignments in the last 30 days, so recent picks count more than old ones. |
 
-`total = 0.40 × skill + 0.25 × workload + 0.20 × availability + 0.15 × deadline`
+`total = 0.35 × skill + 0.25 × deadline + 0.20 × workload + 0.10 × focus + 0.10 × fairness`
 
-Candidates are sorted with eligible ones first, then by score, then by free capacity, then by name. The engine also adds **warnings**, for example "would exceed weekly capacity" or "only N h free before the deadline".
+EDF (Jackson's rule) minimises the maximum lateness on a single worker, so it is a realistic model of how a person orders their work. Each recommendation also returns **warnings**, **insights** (projected finish, buffer, displaced tasks, utilisation) and a **confidence** level from the margin to the runner-up (`CLEAR` ≥ 10, `GOOD` ≥ 4, `CLOSE` < 4, `ONLY_OPTION`). Ties are broken by precise score, then larger buffer, then name.
+
+**Example (seed task 4, "REST API for Task Allocation", CRITICAL):** John Doe **86.9** beats Nusrat Jahan **83.3** (CLOSE, margin 3.6). Critical work targets full expertise, so John (Expert) gets skill fit 100 and Nusrat (exactly at the minimum) 75. Nusrat wins on workload, focus and fairness, but not by enough.
+
+**Stage 3: batch planning (Auto-allocate).** Assigning pending tasks one by one in list order lets an easy task take the only specialist a harder task needed. The planner uses **regret-based greedy** ordering: each round it picks the task with the largest gap between its best and second-best candidate (plus a priority and deadline bonus), assigns it, and re-scores only the tasks whose top two included that person. `POST /api/tasks/auto-allocate` with `{ "dryRun": true }` previews the plan; without it, the plan is applied in **one transaction** and recorded as `AUTO_ASSIGNED`.
+
+| Tasks × people | Planner (incremental top-2) | First draft (full re-scan every round) | Avg. score: planner / in-order greedy |
+| --- | --- | --- | --- |
+| 50 × 100 | 15 ms | 38 ms | 89.7 / 89.4 |
+| 200 × 300 | 108 ms | 2.3 s | 87.0 / 86.6 |
+| 500 × 1,000 | 0.65 s | 94 s | 88.3 / 88.1 |
 
 ```mermaid
 flowchart TD
-    A["Task: required skills, remaining hours, deadline, project"] --> B["Load approved, active EMPLOYEE candidates"]
+    A["Task: required skills, remaining hours, deadline, priority, project"] --> B["Load candidates, skills, active work,<br/>recent assignments, members (5 queries)"]
     B --> C{"Has every required skill<br/>at the minimum level?"}
     C -->|No| X["Ineligible - score 0<br/>reasons listed"]
     C -->|Yes| D{"Members-only project<br/>and not a member?"}
     D -->|Yes| X
-    D -->|No| E["Score skill match, workload,<br/>availability, deadline fit"]
-    E --> F["Weighted total 0-100 plus warnings"]
-    F --> G["Sort: eligible first, score,<br/>free capacity, name"]
+    D -->|No| E["Score skill fit, deadline fit (EDF),<br/>workload, focus, fairness"]
+    E --> F["Weighted total 0-100, warnings,<br/>insights, confidence"]
+    F --> G["Sort: eligible first, score,<br/>buffer, name"]
     G --> H{"Admin decision"}
     H -->|"Assign"| I["Chosen eligible employee"]
-    H -->|"Auto-assign"| J["Top eligible employee"]
+    H -->|"Assign best match"| J["Top eligible employee"]
     H -->|"Override with force"| K["Ineligible employee allowed"]
     I --> Z["ASSIGNED + history + notification"]
     J --> Z
@@ -302,7 +342,7 @@ flowchart TD
 
 ## Task lifecycle
 
-The diagram matches `TRANSITIONS` in [`backend/src/services/taskService.js`](backend/src/services/taskService.js). The allocation endpoints (`assign`, `auto-assign`) move a task from `PENDING` to `ASSIGNED`.
+The diagram matches `TRANSITIONS` in [`backend/src/services/taskService.js`](backend/src/services/taskService.js). The allocation endpoints (`assign`, `auto-assign`, and `auto-allocate` for many tasks at once) move a task from `PENDING` to `ASSIGNED`.
 
 ```mermaid
 stateDiagram-v2
@@ -401,7 +441,7 @@ sequenceDiagram
 
 ## Database
 
-SQLite runs in-process through **sql.js** (SQLite compiled to WebAssembly). Data is stored in `backend/data/smart_workflow.db`.
+SQLite runs in-process through **sql.js** (SQLite compiled to WebAssembly). Data is stored in `backend/data/smart_workflow.db` (on Vercel the database is always in memory and reseeded on each cold start).
 
 ```mermaid
 erDiagram
@@ -439,7 +479,7 @@ erDiagram
         text approval_status "PENDING APPROVED REJECTED"
         int is_active
         text avatar_file "v3"
-        text password_changed_at "v4"
+        text password_changed_at "v4, repaired by v5"
     }
     employees {
         int id PK
@@ -573,6 +613,7 @@ The schema version is stored in `PRAGMA user_version`. Each migration runs once,
 | **v2** | `tasks.completed_at`. A unique index that allows only **one current assignment per task**. Extra indexes. A repair of the legacy seed password hash. |
 | **v3** | `users.avatar_file` and the `attachments` table (file uploads). |
 | **v4** | `users.password_changed_at` (session revocation), `email_settings` (one row), `email_outbox`, `password_resets`. |
+| **v5** | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (no-op otherwise). |
 
 | Command | Effect |
 | --- | --- |
@@ -599,8 +640,10 @@ The schema version is stored in `PRAGMA user_version`. Each migration runs once,
 | SQL injection | Parameterised queries in every repository. |
 | Uploads | MIME type and file extension must both be on a whitelist. Files are stored under random names. Size and count limits apply. Attachment downloads check task access. |
 | HTTP hardening | `helmet` security headers, `x-powered-by` disabled, strict CORS allow-list in production. |
-| Rate limiting | Login, registration and password reset: 50 per 15 min. Whole API: 600 per minute. |
-| Production guard | The server refuses to start in production without a `JWT_SECRET` of at least 32 characters. |
+| Rate limiting | Login, registration and password reset: 50 per 15 min. Whole API: 600 per minute. `trust proxy` behind Vercel (or `TRUST_PROXY=true`) so limits see the real client IP. |
+| Errors | Unexpected errors return a generic message and a short `reference` id that is also logged. Stack traces are only included in development. |
+| Production guard | The server refuses to start in production without a `JWT_SECRET` of at least 32 characters (public demo mode uses a fallback, because its accounts and passwords are public anyway). |
+| Public demo | Built-in accounts can't be locked or taken over, SMTP is refused, uploads are off by default. |
 
 ---
 
@@ -608,33 +651,38 @@ The schema version is stored in `PRAGMA user_version`. Each migration runs once,
 
 ```text
 smart_workflow/
-├── package.json             # root scripts (setup, dev, build, test, db:*)
-├── setup.bat                # Windows one-click install
+├── package.json             # npm workspaces (backend, frontend) + root scripts
+├── package-lock.json        # the only lockfile
+├── .env.example             # the only config template (copy to .env, git-ignored)
+├── vercel.json              # Vercel: build, API function, SPA routing
+├── api/index.mjs            # Vercel serverless entry: exports the Express app
+├── setup.bat                # Windows one-click install (npm install)
 ├── backend/
 │   ├── data/                # smart_workflow.db (+ backups/ before migrations)
 │   ├── uploads/             # attachments/ and avatars/ (git-ignored)
 │   ├── src/
 │   │   ├── app.js           # Express app: middleware, routes, static frontend
-│   │   ├── server.js        # starts HTTP server + mail worker, graceful shutdown
-│   │   ├── config/          # env, db (sql.js queue), schema (migrations), seed, status, migrate
+│   │   ├── server.js        # starts HTTP server + mail worker, graceful shutdown, crash handlers
+│   │   ├── config/          # env (reads root .env), db (sql.js queue), schema (migrations), seed, status, migrate
 │   │   ├── routes/          # auth, admin, tasks, projects, employees, reports, settings ...
-│   │   ├── middleware/      # authMiddleware, rateLimiters, upload, errorHandler
+│   │   ├── middleware/      # authMiddleware, rateLimiters, upload, errorHandler, notFoundHandler (404/405)
 │   │   ├── controllers/     # one per resource, incl. emailSettingsController
-│   │   ├── services/        # allocationEngine, taskService, authService, mailService, dashboardService
+│   │   ├── services/        # allocationScoring (pure core), allocationEngine, taskService, authService, mailService, dashboardService
 │   │   ├── repositories/    # all SQL, incl. emailRepository
 │   │   ├── validators/      # Zod schemas
-│   │   └── utils/           # errors, dates, emailTemplates, secretBox (AES-GCM, SHA-256)
-│   └── tests/               # 9 Jest + supertest suites, helpers, setupEnv
+│   │   └── utils/           # errors, dates, pagination, demo guards, emailTemplates, secretBox (AES-GCM, SHA-256)
+│   └── tests/               # 12 Jest + supertest suites, helpers, setupEnv
 ├── frontend/
 │   ├── public/screenshots/  # images used in this README
-│   ├── vite.config.js       # dev server :5173, /api proxy to :5000
+│   ├── vite.config.js       # dev server :5173, /api proxy to :5000, envDir '..' (root .env, VITE_* only)
 │   └── src/
-│       ├── App.jsx          # routes and role guards
-│       ├── components/      # ui kit, TaskCard, CommandPalette, layout/ (AppLayout, useSidebar)
+│       ├── App.jsx          # routes and role guards (403 page, 404 page)
+│       ├── components/      # ui kit (+ LoadMore), TaskCard, CommandPalette, ErrorBoundary, NetworkStatus,
+│       │                    # MagicBadge, DemoNotice, layout/ (AppLayout, useSidebar)
 │       ├── context/         # AuthContext
-│       ├── lib/             # api client, endpoints, csv, demo accounts, formatting
-│       └── pages/           # public/, dashboard/, tasks/, projects/, employees/, admin/,
-│                            # reports/, settings/, departments/, skills/ ...
+│       ├── lib/             # api client, endpoints, usePagedQuery, chunkReload, csv, demo accounts, formatting
+│       └── pages/           # public/, dashboard/, tasks/ (incl. AutoAllocateModal), projects/, employees/,
+│                            # admin/, reports/, settings/, departments/, skills/ ...
 ├── docs/
 │   ├── ai/                  # current engineering documentation
 │   └── qa/                  # viva questions and answers
@@ -645,78 +693,77 @@ smart_workflow/
 
 ## Scripts
 
-**Root** (run from the repository root):
+Run everything from the repository root. The root `package.json` is an npm workspace (`backend`, `frontend`), so one `npm install` installs both and there is one `package-lock.json`.
 
 | Script | Action |
 | --- | --- |
-| `npm run setup` | Install root, backend and frontend dependencies |
+| `npm install` (or `npm run setup`) | Install all dependencies |
 | `npm run dev` | Run the API (`node --watch`) and the Vite dev server together |
 | `npm run build` | Build the React app into `frontend/dist` |
 | `npm start` | Start the API. It also serves `frontend/dist` if that has been built. |
 | `npm test` | Run the backend integration tests |
 | `npm run lint` | Lint the frontend (oxlint) |
+| `npm run check` | Tests + lint + production build: run before pushing |
 | `npm run db:status` | Show the database schema version and pending migrations |
 | `npm run db:migrate` | Back up the database and apply pending migrations |
 | `npm run db:reset` | Wipe and reseed the database |
+| `npm run vercel-build` | Alias of `build` for Vercel |
 
-**Backend** (`cd backend`):
-
-| Script | Action |
-| --- | --- |
-| `npm start` | `node src/server.js` |
-| `npm run dev` | `node --watch src/server.js` (restarts on changes) |
-| `npm test` | Jest in ESM mode, `--runInBand` |
-| `npm run seed` / `npm run db:reset` | Recreate the schema and demo data |
-| `npm run db:migrate` / `npm run db:status` | Migration tools (see [Database](#database)) |
-
-**Frontend** (`cd frontend`): `npm run dev`, `npm run build`, `npm run preview`, `npm run lint`.
+A single workspace can be targeted with `-w`, e.g. `npm run dev -w backend` or `npm run preview -w frontend`. Requires Node.js 20 or newer.
 
 ---
 
 ## Environment variables
 
-Backend settings go in `backend/.env` (copy `backend/.env.example`). Every variable is optional for local development.
+There is **one** config file for the whole repository: the root `.env` (copy [`.env.example`](.env.example); `.env` is git-ignored). The backend reads every key ([`backend/src/config/env.js`](backend/src/config/env.js)); Vite reads the same file (`envDir: '..'`) but only exposes `VITE_*` keys to the browser. Variables already set in the environment win, which is how Vercel and the tests configure the app. Every variable is optional for local development.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `5000` | API port |
-| `NODE_ENV` | `development` | `production` requires a strong `JWT_SECRET` and enables strict CORS. Tests set `test`. |
-| `DB_FILE` | `smart_workflow.db` | File name in `backend/data/`, or `:memory:` for a throw-away database |
+| `NODE_ENV` | `development` | Set by the host or shell, **never in `.env`** (Vite would bundle React's development build). `production` requires a strong `JWT_SECRET` and enables strict CORS. Tests set `test`. |
+| `DB_FILE` | `smart_workflow.db` | File name in `backend/data/`, or `:memory:` for a throw-away database. Ignored on Vercel (always in memory). |
 | `JWT_SECRET` | dev fallback | Token signing key. **Required (32+ characters) in production.** |
 | `JWT_EXPIRES_IN` | `24h` | Token lifetime |
 | `BCRYPT_ROUNDS` | `10` | Password hashing cost |
 | `ALLOWED_ORIGINS` | localhost list | Comma-separated CORS allow-list (enforced in production only) |
-| `UPLOAD_DIR` | `uploads` | Where attachments and photos are stored, relative to `backend/` |
-| `MAX_UPLOAD_MB` | `10` | Per-file attachment limit. Profile photos are always 2 MB or less. |
+| `UPLOAD_DIR` | `uploads` | Where attachments and photos are stored, relative to `backend/` (temp dir on Vercel) |
+| `MAX_UPLOAD_MB` | `10` (4 on Vercel) | Per-file attachment limit. Profile photos are always 2 MB or less. |
 | `SETTINGS_SECRET` | value of `JWT_SECRET` | Key material for encrypting the stored SMTP password. **If you change it, re-enter the SMTP password.** |
 | `EMAIL_WORKER` | on | Set to `off` to disable the background mail worker. The outbox can still be flushed from the UI. Always off under tests. |
 | `PASSWORD_RESET_TTL_MINUTES` | `30` | How long a forgot-password link stays valid |
-
-Frontend (optional, `frontend/.env.local`): `VITE_API_PROXY_TARGET` sets the dev proxy target (default `http://localhost:5000`). `VITE_API_BASE_URL` sets the API URL for a separately hosted build.
+| `DEMO_MODE` | `true` on Vercel, else `false` | Public demo mode (see [Deploy to Vercel](#deploy-to-vercel)) |
+| `DEMO_ALLOW_UPLOADS` | `false` | Allow uploads in demo mode |
+| `TRUST_PROXY` | `true` on Vercel | Read the client IP from `X-Forwarded-For` behind a proxy |
+| `VITE_API_PROXY_TARGET` | `http://localhost:5000` | Vite dev proxy target |
+| `VITE_API_BASE_URL` | `/api` | API URL for a separately hosted frontend build |
 
 ---
 
 ## Testing
 
 ```bash
-npm test          # from the root, or `cd backend && npm test`
+npm test          # backend tests
+npm run check     # tests + frontend lint + production build
 ```
 
-- **106 integration tests** in 9 suites, written with **Jest + supertest**. They send real HTTP requests to the Express app.
+- **157 integration tests** in 12 suites, written with **Jest + supertest**. They send real HTTP requests to the Express app.
 - Each test file gets a fresh **in-memory** database seeded with the demo data, and a temporary upload folder. Your real `.db` file is never touched.
 - The rate limiters and the mail worker are turned off under test, so results are deterministic.
 
-| Suite | Covers |
-| --- | --- |
-| `access.test.js` | Unauthenticated requests are rejected (401). Role-based access control. |
-| `allocation.test.js` | Scoring maths and eligibility filters, with live data |
-| `auth.test.js` | Register, approve, log in, profile, change password |
-| `crud.test.js` | Departments, skills, employees, projects |
-| `email.test.js` | E-mail settings (super admin only), encryption, outbox, forgot password, session revocation |
-| `health.test.js` | `GET /api/health` |
-| `reports.test.js` | Reports, dashboard, notifications |
-| `uploads.test.js` | Attachments, profile photos, role management |
-| `workflow.test.js` | Full task lifecycle and transition rules |
+| Suite | Tests | Covers |
+| --- | ---: | --- |
+| `access.test.js` | 18 | Unauthenticated requests are rejected (401). Role-based access control. |
+| `allocation.test.js` | 16 | Scoring core (EDF, expertise, fairness, batch planner), eligibility filters with live data, auto-allocate preview and apply |
+| `auth.test.js` | 11 | Register, approve, log in, profile, change password |
+| `crud.test.js` | 10 | Departments, skills, employees, projects |
+| `demo.test.js` | 6 | Public demo mode: protected accounts, uploads off, LOG-only e-mail, no reset links for built-in accounts |
+| `email.test.js` | 16 | E-mail settings (super admin only), encryption, outbox, forgot password, session revocation |
+| `errors.test.js` | 18 | 400/401/403/404/405/409/413/415 mapping, 500 with reference and no stack |
+| `health.test.js` | 1 | `GET /api/health` |
+| `pagination.test.js` | 18 | `limit`/`offset`, `X-Total-Count`, `/tasks/summary`, invalid paging |
+| `reports.test.js` | 10 | Reports, dashboard, notifications |
+| `uploads.test.js` | 18 | Attachments, profile photos, role management |
+| `workflow.test.js` | 15 | Full task lifecycle and transition rules |
 
 Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has no automated UI tests.
 
@@ -745,7 +792,8 @@ Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has n
 | [docs/ai/README.md](docs/ai/README.md) | Index and one-minute summary |
 | [ARCHITECTURE.md](docs/ai/ARCHITECTURE.md) | Layers, request flow, design decisions |
 | [AUDIT_REPORT.md](docs/ai/AUDIT_REPORT.md) | Defects found in the original code and how each was fixed |
-| [ALLOCATION_ENGINE.md](docs/ai/ALLOCATION_ENGINE.md) | Allocation algorithm with a worked example |
+| [ALLOCATION_ENGINE.md](docs/ai/ALLOCATION_ENGINE.md) | Allocation engine v2: scores, EDF, batch planner, benchmarks |
+| [DEPLOYMENT.md](docs/ai/DEPLOYMENT.md) | One-repo structure, Vercel, public demo mode, configuration |
 | [TASK_WORKFLOW.md](docs/ai/TASK_WORKFLOW.md) | State machine, permissions, notifications |
 | [DATABASE.md](docs/ai/DATABASE.md) | Schema, relationships, migrations, seed data |
 | [API_REFERENCE.md](docs/ai/API_REFERENCE.md) | Every endpoint, its access level and payload |
@@ -760,7 +808,10 @@ Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has n
 | Symptom | Fix |
 | --- | --- |
 | UI says "Cannot reach the server" | Start the backend. `npm run dev` at the root starts both halves. |
-| `Port 5000 is already in use` | Stop the other process, or set `PORT` in `backend/.env` and `VITE_API_PROXY_TARGET` in `frontend/.env.local`. |
+| `Port 5000 is already in use` | Stop the other process, or set `PORT` and `VITE_API_PROXY_TARGET` in the root `.env`. |
+| Production build shows React development warnings | `NODE_ENV` was put in `.env`. Remove it; let the host or shell set it. |
+| On Vercel, my changes disappeared | Expected in demo mode: the database is in memory and reseeded on each cold start. |
+| "Public demo: … is disabled" (403) | Demo mode protects the built-in accounts and blocks SMTP and uploads. Register your own account, or set `DEMO_MODE=false` on a host with a persistent disk. |
 | Demo login fails on an old database | Restart once (migration 2 repairs legacy passwords), or run `npm run db:reset`. |
 | "Too many attempts" on login | Auth rate limit (50 per 15 min). Wait, or restart the server. |
 | Forgot-password page says it is unavailable | E-mail is disabled. Enable it in Settings → E-mail settings (LOG is enough for a demo). |
@@ -781,11 +832,13 @@ Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has n
 - The JWT is kept in `localStorage`. There are no refresh tokens: a session lasts `JWT_EXPIRES_IN`.
 - Notifications are not pushed in real time. The UI polls for them every 30 s.
 - Uploads are stored on the server's local disk.
+- The Vercel deployment is a demo: its in-memory data is temporary and not shared between instances.
+- The allocation model ignores holidays and leave, and the batch planner is a strong heuristic, not a proven optimum.
 - There are no automated frontend tests.
 
 **Possible next steps**
 
-- Move to a server database (PostgreSQL or MySQL) behind the existing repository layer.
+- Move to a server database (PostgreSQL, MySQL or Turso/libSQL) behind the existing repository layer, which would also make the Vercel deployment persistent.
 - Real-time updates with WebSockets or server-sent events.
 - Calendar-aware availability (leave and holidays) in the allocation engine.
 - Frontend component and end-to-end tests.

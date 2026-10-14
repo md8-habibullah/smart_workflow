@@ -2,7 +2,11 @@
   "name": "smart-workforce",
   "private": true,
   "version": "1.0.0",
-  "description": "Smart Workforce & Task Allocation System: Express + SQLite API with a React frontend",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "description": "Smart Workforce & Task Allocation System: React + Express + SQLite in one repository, deployable as a single Vercel project",
   "author": {
     "name": "MD. Habibullah Sharif",
     "url": "https://habibullah.dev"
@@ -22,20 +26,28 @@
     "react",
     "express",
     "sqlite",
-    "habibullah"
+    "habibullah",
+    "task-scheduling",
+    "earliest-deadline-first",
+    "vercel"
   ],
   "scripts": {
-    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
-    "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
-    "build": "npm --prefix frontend run build",
-    "start": "npm --prefix backend start",
-    "test": "npm --prefix backend test",
-    "lint": "npm --prefix frontend run lint",
-    "db:reset": "npm --prefix backend run db:reset",
-    "db:migrate": "npm --prefix backend run db:migrate",
-    "db:status": "npm --prefix backend run db:status"
+    "setup": "npm install",
+    "dev": "concurrently -n api,web -c yellow,cyan \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend",
+    "start": "npm start -w backend",
+    "test": "npm test -w backend",
+    "lint": "npm run lint -w frontend",
+    "check": "npm test && npm run lint && npm run build",
+    "db:reset": "npm run db:reset -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:status": "npm run db:status -w backend",
+    "vercel-build": "npm run build"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

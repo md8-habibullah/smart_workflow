@@ -26,8 +26,8 @@ All demo accounts use the password **`password123`**.
    npm run dev
    ```
    Wait for "Listening on: http://0.0.0.0:5000" and the Vite URL `http://localhost:5173`.
-3. Open http://localhost:5173 in both windows. Check `http://localhost:5000/api/health` shows `"status":"UP"` and `"schemaVersion":4`.
-4. Optional: run `npm test` once in another terminal to show "106 passed" (it uses an in-memory DB, so it does not touch the demo data).
+3. Open http://localhost:5173 in both windows. Check `http://localhost:5000/api/health` shows `"status":"UP"` and `"schemaVersion":5`.
+4. Optional: run `npm test` once in another terminal to show "157 passed" (it uses an in-memory DB, so it does not touch the demo data).
 
 ---
 
@@ -43,14 +43,16 @@ All demo accounts use the password **`password123`**.
 
 ## 3. Smart allocation (3 min) — the core feature
 
-1. **Tasks** → open **"REST API for Task Allocation"** (task 4, PENDING, needs JavaScript ADVANCED + Node.js ADVANCED, 20 h).
-2. Click **Find best match** (or drop the card on the "Assigned" column of the board).
-3. Point at the ranking: **John Doe ≈ 92**, **Nusrat Jahan ≈ 90**; expand the breakdown (skill / workload / availability / deadline).
+1. **Tasks** → open **"REST API for Task Allocation"** (task 4, PENDING, **CRITICAL**, needs JavaScript ADVANCED + Node.js ADVANCED, 20 h, due in 10 days).
+2. Click **Find best match** (the button with the magic-wand icon), or drop the card on the "Assigned" column of the board.
+3. Point at the ranking: **John Doe 86.9**, **Nusrat Jahan 83.3**, confidence badge **Close call (+3.6)**. Show John's five bars: skill fit 100, deadline fit 100, workload 50, focus 95, fairness 75; and Nusrat's: 75, 100, 65, 100, 91. Point at the projected finish and the buffer (5 days vs 6.4 days).
 4. Scroll to ineligible people: "Lacks required skill: Node.js", "Insufficient proficiency in JavaScript (has 50, requires 75)".
-5. **Say:** "Stage one is hard filters: active approved employee, every required skill at the minimum level, project membership. Stage two is a weighted score: 40% skill depth, 25% free weekly capacity, 20% availability, 15% deadline fit. John is an expert, so his skill score is 100, but he already has 8.5 hours of work, so his workload score is 79. Nusrat just meets the minimum — 75 — but she is completely free."
-6. Click **Auto-assign** → toast "Task auto-assigned to John Doe".
-7. **Say:** "Auto-assign runs the engine inside the same database transaction as the assignment, so the decision can't become stale. It also wrote history and a notification for John — and, if e-mail is on, an outbox e-mail in the same transaction."
-8. Optional: open **"Product Promo Video"** (task 10) → Find best match → nobody is eligible (needs Video Editing) → Auto-assign gives a clear 409 error.
+5. **Say:** "Stage one is hard filters: active approved employee, every required skill at the minimum level, project membership. Stage two is five explainable scores: skill fit 35%, deadline fit 25%, workload 20%, focus 10%, fairness 10%. Deadline fit simulates each person's queue in earliest-deadline-first order, so it knows the projected finish date and whether this task would make their other work late. Because this task is **critical**, skill fit wants the top expert: John gets 100, Nusrat, who is exactly at the minimum, gets 75. Nusrat wins on workload, focus and fairness, but not by enough. For a low-priority task it would flip, and the expert would be kept free. The badge says *Close call*, so a human should glance at it."
+6. Click **Assign best match** → toast "Task auto-assigned to John Doe".
+7. **Say:** "The wand icon only ever marks decisions the algorithm makes. Assign best match runs the engine inside the same database transaction as the assignment, so the decision can't become stale. It also wrote an `AUTO_ASSIGNED` history entry, also marked with the wand, and a notification for John, plus an outbox e-mail in the same transaction if e-mail is on."
+8. Back to **Tasks** → click **Auto-allocate (N)** (wand icon; also in the command palette, Ctrl+K → "Auto-allocate pending tasks"). The dialog shows a **preview**: every pending task with its planned person, score, the runner-up and a confidence badge; **"Product Promo Video"** (task 10) is listed as having no eligible person (nobody has Video Editing).
+9. **Say:** "This is the batch planner. Assigning in list order could let an easy task take the only specialist a harder task needs, so the planner serves the task with the biggest gap between its best and second-best person first, boosted by priority and deadline. After each pick it re-scores only the tasks that person affected, which is why it plans 500 tasks for 1,000 people in under a second. This is a dry run: nothing has changed yet."
+10. Click **Apply** → toast "Assigned N tasks automatically." Everything is applied in **one transaction**; task 10 stays PENDING.
 
 ## 4. Employee view, work log and file upload (2–3 min) — incognito window
 
@@ -68,7 +70,7 @@ All demo accounts use the password **`password123`**.
 ## 5. Kanban approval as admin (1 min) — normal window
 
 1. **Tasks** → board view. The task John submitted is now in **Review** (refresh if needed; the bell shows "Task ready for review").
-2. Drag it to **Completed** → toast "Task moved to COMPLETED".
+2. Drag it to **Completed** → toast "Task moved to Completed".
 3. Open the task → **History** tab: CREATED, ASSIGNED/AUTO_ASSIGNED, WORK_LOGGED, ATTACHMENT_ADDED, STATUS_CHANGED.
    **Say:** "Every action writes an audit row in the same transaction."
 
@@ -98,9 +100,16 @@ All demo accounts use the password **`password123`**.
 4. **Say:** "The token is 32 random bytes; only its SHA-256 hash is stored. It expires in 30 minutes, works once, a newer link cancels older ones, and the reset signs out every existing session of that user."
 5. Optional: open the same link again → "This reset link is invalid or has expired."
 
-## 9. Closing line (15 s)
+## 9. Optional: the public Vercel demo (1 min)
 
-"To summarise: explainable smart allocation, a strict workflow with audit history, safe file handling, e-mail through a transactional outbox, and 106 integration tests that check the security rules and the business rules."
+1. Open the Vercel URL on a phone or a second laptop. A small **"Public demo"** notice explains that data is temporary.
+2. Sign in with a demo button and show that allocation and the board work the same.
+3. Optional: as `superadmin@smartworkflow.org`, try to change John's role → 403 "Public demo: changing the role is disabled for the built-in demo accounts…".
+4. **Say:** "The same repository deploys as one Vercel project: the CDN serves the React build and one serverless function runs the same Express app. Serverless disks are read-only, so the demo runs with an in-memory database seeded on every cold start. Visitors can try everything, nothing is permanent, built-in accounts can't be locked, and e-mail is log-only. For a real deployment we use single-server mode on a disk, or a hosted database."
+
+## 10. Closing line (15 s)
+
+"To summarise: explainable smart allocation with a batch planner, a strict workflow with audit history, safe file handling, e-mail through a transactional outbox, and 157 integration tests that check the security rules and the business rules."
 
 ---
 
@@ -109,7 +118,7 @@ All demo accounts use the password **`password123`**.
 | Problem | Quick fix |
 | --- | --- |
 | Page says "Cannot reach the server" | The backend is not running. Run `npm run dev` from the repository root (it starts both API and UI). |
-| `Port 5000 is already in use` | Another server is running. Close it, or on Windows: `netstat -ano \| findstr :5000` then `taskkill /PID <pid> /F`. Or set `PORT` in `backend/.env` and `VITE_API_PROXY_TARGET` for the frontend. |
+| `Port 5000 is already in use` | Another server is running. Close it, or on Windows: `netstat -ano \| findstr :5000` then `taskkill /PID <pid> /F`. Or set `PORT` and `VITE_API_PROXY_TARGET` in the root `.env`. |
 | Vite started on 5174 instead of 5173 | Port 5173 is busy (an old Vite). Use the URL Vite prints, or close the old one. Reset links use the "App URL" from e-mail settings (default `http://localhost:5173`) — adjust it if needed. |
 | Scores / tasks differ from the script | Data was changed by earlier practice. Stop the server, run `npm run db:reset`, start again. |
 | Demo login fails ("Invalid email or password") | Someone changed the password (e.g. the forgot-password step). Reset data as above. |
@@ -130,7 +139,7 @@ All demo accounts use the password **`password123`**.
 **[Basic]** As John, open a URL like `/app/tasks/3` (Jane's task). The API answers 403 "You do not have access to this task." and the page shows the error. The rule is in `getTaskForUser` ([taskService.js](../../backend/src/services/taskService.js) lines 44–50) and tested in [access.test.js](../../backend/tests/access.test.js).
 
 ### Q: What happens if John types `/app/reports` in the address bar?
-**[Basic]** The React guard `RequireAdmin` redirects him to `/app`. Even if he bypassed the UI, `GET /api/reports/workload` returns 403 because of `requireAdmin` on the server.
+**[Basic]** The React guard `RequireAdmin` shows a 403 page ("Back to dashboard") instead of the reports. Even if he bypassed the UI, `GET /api/reports/workload` returns 403 because of `requireAdmin` on the server.
 
 ### Q: Why did the card jump back when you dropped it in the wrong place?
 **[Intermediate]** The client only allows highlighted targets; if the server still refuses (e.g. state changed meanwhile), the optimistic override is removed after refetching, so the card returns to its real column and a toast shows the server's message.
@@ -145,7 +154,7 @@ All demo accounts use the password **`password123`**.
 **[Basic]** Nothing is lost: on start the server reads the `.db` file back into memory. Only `npm run db:reset` wipes it.
 
 ### Q: Can you show the score calculation in the code?
-**[Intermediate]** Open [allocationEngine.js](../../backend/src/services/allocationEngine.js): `WEIGHTS` on line 26, the skill curve on lines 36–39, the four components on lines 137–147, and the weighted total on lines 159–164.
+**[Intermediate]** Open [allocationScoring.js](../../backend/src/services/allocationScoring.js): `WEIGHTS` on lines 26–32, skill fit on lines 60–74, the EDF simulation and deadline fit on lines 90–130, workload/focus/fairness on lines 135–149, the weighted total in `scoreCandidate` on lines 158–177, and the batch planner `planBatch` on lines 214–305. [allocationEngine.js](../../backend/src/services/allocationEngine.js) loads the data and turns scores into warnings and insights.
 
 ### Q: How do you know all this still works after your last change?
-**[Basic]** Run `npm test`: 106 integration tests, each test file on a fresh in-memory database, covering access control, workflow, allocation, uploads, e-mail and password reset.
+**[Basic]** Run `npm test`: 157 integration tests in 12 files, each test file on a fresh in-memory database, covering access control, workflow, allocation and batch planning, uploads, e-mail and password reset, pagination, error handling and demo mode. `npm run check` also runs the frontend lint and production build.

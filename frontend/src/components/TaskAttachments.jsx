@@ -7,6 +7,7 @@ import { tasksApi } from '../lib/endpoints'
 import { saveBlob } from '../lib/api'
 import { timeAgo } from '../lib/format'
 import { EmptyState, IconButton, Modal, Spinner, cn, useConfirm } from './ui'
+import { useServerOptions } from './DemoNotice'
 
 const MAX_MB = 10
 const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md,.log,.csv,.json,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
@@ -64,7 +65,9 @@ export default function TaskAttachments({ task, onChange }) {
   const [confirm, confirmDialog] = useConfirm()
 
   const isAssignee = task.assigned_employee_id && task.assigned_employee_id === employeeId
-  const canUpload = (isAdmin || isAssignee) && task.status !== 'CANCELLED'
+  const { data: serverOptions } = useServerOptions()
+  const uploadsOff = serverOptions?.uploadsEnabled === false
+  const canUpload = (isAdmin || isAssignee) && task.status !== 'CANCELLED' && !uploadsOff
   const list = useQuery({ queryKey: ['task-attachments', task.id], queryFn: () => tasksApi.attachments(task.id) })
 
   const refresh = () => {
@@ -127,6 +130,9 @@ export default function TaskAttachments({ task, onChange }) {
   return (
     <div>
       {confirmDialog}
+      {uploadsOff && (
+        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">File uploads are turned off on this public demo.</p>
+      )}
       {canUpload && (
         <div
           onDragOver={(e) => {

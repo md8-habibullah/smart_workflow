@@ -2,19 +2,24 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Clock, Columns3, Download, List, ListTodo, Plus, Target } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { projectsApi, tasksApi } from '../../lib/endpoints'
 import { PRIORITIES, PRIORITY_META, STATUS_META, hours } from '../../lib/format'
-import { Avatar, Button, Card, EmptyState, ErrorState, PageHeader, SearchInput, Select, Skeleton, Tabs, cn } from '../../components/ui'
+import { Avatar, Button, Card, EmptyState, ErrorState, LoadMore, PageHeader, SearchInput, Select, Skeleton, Tabs, cn } from '../../components/ui'
 import { Deadline, PriorityBadge, StatusBadge } from '../../components/badges'
 import TaskCard from '../../components/TaskCard'
 import TaskFormModal from '../../components/TaskFormModal'
 import { useDebounced } from '../../lib/useDebounced'
+import { usePagedQuery } from '../../lib/usePagedQuery'
 import { exportCsv } from '../../lib/csv'
 import TaskBoard from './TaskBoard'
+import AutoAllocateModal from './AutoAllocateModal'
+import { MagicIcon } from '../../components/MagicBadge'
 
 const STATUS_TABS = ['', 'PENDING', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'COMPLETED', 'CANCELLED']
 const VIEW_KEY = 'swta.tasks.view'
+const PAGE_SIZE = 25
 
 const savedView = () => {
   try {
@@ -36,6 +41,10 @@ export default function TasksPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState(false)
+  const [allocatingState, setAllocating] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  // ?allocate=1 (e.g. from the command palette) opens the auto-allocate dialog.
+  const allocating = allocatingState || (isAdmin && params.get('allocate') === '1')
   const [search, setSearch] = useState(params.get('search') || '')
   const debouncedSearch = useDebounced(search, 300)
 
@@ -56,23 +65,52 @@ export default function TasksPage() {
     setParams(next, { replace: true })
   }
 
-  const tasks = useQuery({
+  // The Kanban board needs every task in one go; the list loads page by page while scrolling.
+  const board = useQuery({
     queryKey: ['tasks', filters],
     queryFn: () => tasksApi.list(filters),
     placeholderData: keepPreviousData,
+    enabled: view === 'board',
   })
-  // Unfiltered list for tab counts.
-  const all = useQuery({ queryKey: ['tasks', {}], queryFn: () => tasksApi.list({}) })
+  const list = usePagedQuery({
+    queryKey: ['tasks', 'page', filters],
+    fetchPage: (page) => tasksApi.page({ ...filters, ...page }),
+    pageSize: PAGE_SIZE,
+    enabled: view === 'list',
+  })
+  const tasks = view === 'board' ? { ...board, rows: board.data } : { ...list, rows: list.items }
+  // Tab badges: per-status counts computed by the server instead of downloading every task.
+  const summary = useQuery({ queryKey: ['tasks', 'summary'], queryFn: () => tasksApi.summary() })
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => projectsApi.list() })
 
-  const counts = {}
-  for (const t of all.data || []) counts[t.status] = (counts[t.status] || 0) + 1
+  const counts = summary.data?.byStatus || {}
 
   const tabs = STATUS_TABS.map((s) => ({
     value: s,
     label: s ? STATUS_META[s].label : 'All',
-    count: s ? counts[s] || 0 : all.data?.length,
+    count: s ? counts[s] || 0 : summary.data?.total,
   }))
+
+  // Export everything matching the filters, not just the pages loaded so far.
+  const exportTasks = async () => {
+    setExporting(true)
+    try {
+      const rows = view === 'board' && board.data ? board.data : await tasksApi.list(filters)
+      exportCsv('tasks', rows, [
+        'id', 'title', 'project_name', 'status', 'priority', 'assigned_employee_name',
+        'estimated_hours', 'logged_hours', 'deadline', 'created_at', 'completed_at',
+      ])
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const closeAllocate = () => {
+    setAllocating(false)
+    if (params.has('allocate')) updateParam('allocate', '')
+  }
 
   return (
     <div>
@@ -113,16 +151,23 @@ export default function TasksPage() {
             <Button
               variant="secondary"
               icon={Download}
-              disabled={!tasks.data?.length}
-              onClick={() =>
-                exportCsv('tasks', tasks.data, [
-                  'id', 'title', 'project_name', 'status', 'priority', 'assigned_employee_name',
-                  'estimated_hours', 'logged_hours', 'deadline', 'created_at', 'completed_at',
-                ])
-              }
+              disabled={!tasks.rows?.length}
+              loading={exporting}
+              onClick={exportTasks}
             >
               Export
             </Button>
+            {isAdmin && (
+              <Button
+                variant="secondary"
+                icon={MagicIcon}
+                onClick={() => setAllocating(true)}
+                disabled={!counts.PENDING}
+                title="The allocation engine assigns every pending task to its best match"
+              >
+                Auto-allocate{counts.PENDING ? ` (${counts.PENDING})` : ''}
+              </Button>
+            )}
             {isAdmin && (
               <Button icon={Plus} onClick={() => setCreating(true)}>
                 New task
@@ -181,7 +226,7 @@ export default function TasksPage() {
         <Card>
           <ErrorState error={tasks.error} onRetry={() => tasks.refetch()} />
         </Card>
-      ) : tasks.data.length === 0 ? (
+      ) : tasks.rows.length === 0 ? (
         <Card>
           <EmptyState
             icon={ListTodo}
@@ -197,11 +242,11 @@ export default function TasksPage() {
           />
         </Card>
       ) : view === 'board' ? (
-        <TaskBoard tasks={tasks.data} />
+        <TaskBoard tasks={tasks.rows} />
       ) : (
         <>
           {/* Desktop table */}
-          <Card padded={false} className={cn('hidden overflow-hidden md:block', tasks.isFetching && 'opacity-70')}>
+          <Card padded={false} className={cn('hidden overflow-hidden md:block', tasks.isPlaceholderData && 'opacity-70')}>
             <div className="overflow-x-auto">
               <table className="table-base">
                 <thead>
@@ -216,7 +261,7 @@ export default function TasksPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {tasks.data.map((t) => {
+                  {tasks.rows.map((t) => {
                     const done = t.status === 'COMPLETED' || t.status === 'CANCELLED'
                     return (
                       <tr key={t.id} className="cursor-pointer" onClick={() => navigate(`/app/tasks/${t.id}`)}>
@@ -277,13 +322,15 @@ export default function TasksPage() {
 
           {/* Mobile cards */}
           <div className="space-y-3 md:hidden">
-            {tasks.data.map((t) => (
+            {tasks.rows.map((t) => (
               <TaskCard key={t.id} task={t} showAssignee={isAdmin} />
             ))}
           </div>
+          <LoadMore query={list} noun="tasks" />
         </>
       )}
 
+      {isAdmin && <AutoAllocateModal open={allocating} onClose={closeAllocate} />}
       <TaskFormModal open={creating} onClose={() => setCreating(false)} onSaved={(task) => task && navigate(`/app/tasks/${task.id}`)} />
     </div>
   )

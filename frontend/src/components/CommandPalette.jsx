@@ -7,13 +7,16 @@ import { ArrowRight, BarChart3, Bell, Building2, CornerDownLeft, FolderKanban, L
 import { useAuth } from '../context/AuthContext'
 import { employeesApi, projectsApi, tasksApi } from '../lib/endpoints'
 import { STATUS_META } from '../lib/format'
+import { useDebounced } from '../lib/useDebounced'
 import { Avatar, Spinner, cn } from './ui'
+import { MagicIcon } from './MagicBadge'
 
 const PAGES = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard },
   { label: 'Tasks', to: '/app/tasks', icon: ListTodo },
   { label: 'Task board (Kanban)', to: '/app/tasks?view=board', icon: ListTodo },
   { label: 'Task list', to: '/app/tasks?view=list', icon: ListTodo },
+  { label: 'Auto-allocate pending tasks', to: '/app/tasks?allocate=1', icon: MagicIcon, admin: true, magic: true },
   { label: 'Projects', to: '/app/projects', icon: FolderKanban },
   { label: 'Employees', to: '/app/employees', icon: Users, admin: true },
   { label: 'Departments', to: '/app/departments', icon: Building2, admin: true },
@@ -54,7 +57,10 @@ function Palette({ onClose }) {
   const [term, setTerm] = useState('')
   const [active, setActive] = useState(0)
 
-  const tasks = useQuery({ queryKey: ['tasks', {}], queryFn: () => tasksApi.list({}) })
+  const debouncedTerm = useDebounced(term.trim(), 200)
+  // Tasks can be numerous: let the server search and send back only the first few matches.
+  const taskQuery = { search: debouncedTerm || undefined, limit: 8 }
+  const tasks = useQuery({ queryKey: ['tasks', 'palette', taskQuery], queryFn: () => tasksApi.list(taskQuery), placeholderData: (prev) => prev })
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => projectsApi.list() })
   const employees = useQuery({ queryKey: ['employees', { status: 'ALL' }], queryFn: () => employeesApi.list({ status: 'ALL' }), enabled: isAdmin })
   const loading = tasks.isPending || projects.isPending || (isAdmin && employees.isPending)
@@ -73,10 +79,10 @@ function Palette({ onClose }) {
     const match = (...fields) => !q || fields.some((f) => String(f ?? '').toLowerCase().includes(q))
     const out = []
     PAGES.filter((p) => (!p.admin || isAdmin) && (!p.superAdmin || isSuperAdmin) && match(p.label)).forEach((p) =>
-      out.push({ key: `page-${p.to}`, group: 'Pages', label: p.label, to: p.to, icon: p.icon }),
+      out.push({ key: `page-${p.to}`, group: 'Pages', label: p.label, to: p.to, icon: p.icon, magic: p.magic }),
     )
+    // Already searched server-side (title, description, project).
     ;(tasks.data || [])
-      .filter((t) => match(t.title, t.project_name, t.assigned_employee_name))
       .slice(0, q ? 8 : 4)
       .forEach((t) =>
         out.push({ key: `task-${t.id}`, group: 'Tasks', label: t.title, hint: `${STATUS_META[t.status].label} · ${t.project_name}`, to: `/app/tasks/${t.id}`, icon: ListTodo }),
@@ -154,7 +160,13 @@ function Palette({ onClose }) {
                   onClick={() => go(r)}
                   className={cn('flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left', i === active ? 'bg-brand-50 text-brand-900' : 'text-slate-700')}
                 >
-                  {r.person ? <Avatar name={r.person} size="xs" /> : <r.icon className={cn('size-4 shrink-0', i === active ? 'text-brand-600' : 'text-slate-400')} />}
+                  {r.person ? (
+                    <Avatar name={r.person} size="xs" />
+                  ) : r.magic ? (
+                    <MagicIcon />
+                  ) : (
+                    <r.icon className={cn('size-4 shrink-0', i === active ? 'text-brand-600' : 'text-slate-400')} />
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{r.label}</span>
                     {r.hint && <span className="block truncate text-xs text-slate-500">{r.hint}</span>}

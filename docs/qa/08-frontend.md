@@ -1,45 +1,46 @@
 # 08 · Frontend
 
-React architecture, routing guards, server state, the Kanban board, the resizable sidebar and token storage.
+React architecture, routing guards, server state, infinite lists, error handling, the Kanban board, the resizable sidebar, the magic indicator and token storage.
 Related reading: [FRONTEND.md](../ai/FRONTEND.md).
 
 ---
 
 ### Q: Describe the frontend architecture.
 **[Basic]** A React 19 Single-Page Application built with Vite.
-- [main.jsx](../../frontend/src/main.jsx): providers in this order — `BrowserRouter` → `QueryClientProvider` (TanStack Query) → `AuthProvider` → `App` + `Toaster`.
+- [main.jsx](../../frontend/src/main.jsx): providers in this order — `ErrorBoundary` → `BrowserRouter` → `QueryClientProvider` (TanStack Query, with global error toasts) → `AuthProvider` → `App` + `NetworkStatus` + `Toaster`.
 - [App.jsx](../../frontend/src/App.jsx): the route table and guards.
-- [lib/api.js](../../frontend/src/lib/api.js): small `fetch` client; [lib/endpoints.js](../../frontend/src/lib/endpoints.js): every backend call grouped by resource.
+- [lib/api.js](../../frontend/src/lib/api.js): small `fetch` client; [lib/endpoints.js](../../frontend/src/lib/endpoints.js): every backend call grouped by resource; [lib/usePagedQuery.js](../../frontend/src/lib/usePagedQuery.js): infinite lists.
 - [context/AuthContext.jsx](../../frontend/src/context/AuthContext.jsx): the signed-in user (the only React context).
 - [components/](../../frontend/src/components): UI kit (`ui.jsx`: Button, Card, Modal, Field, Tabs…), badges, layout, shared widgets.
 - [pages/](../../frontend/src/pages): one folder per feature area.
 Styling uses Tailwind CSS v4 with a green brand palette defined once in `index.css`.
 
 ### Q: How does routing and route protection work?
-**[Basic]** [App.jsx](../../frontend/src/App.jsx) lines 30–53 define guards:
-- `RequireAuth`: while the stored token is being checked shows a loader; if not logged in, redirects to `/login` and remembers the page (`state.from`).
-- `RequireAdmin` / `RequireSuperAdmin`: redirect to `/app` if the role is not enough.
-- `GuestOnly`: logged-in users visiting `/login` or `/register` go to `/app`.
-`/reset-password` is intentionally **not** guest-only, so a reset link works even if another account is signed in on that browser (comment on line 64).
+**[Basic]** [App.jsx](../../frontend/src/App.jsx) lines 37–64 define guards:
+- `RequireAuth`: while the stored token is being checked shows a loader; if not logged in, redirects to `/login` and remembers the page and query string (`state.from`).
+- `RequireAdmin` / `RequireSuperAdmin`: render a **403 page** ([ForbiddenPage.jsx](../../frontend/src/pages/ForbiddenPage.jsx), with a "Back to dashboard" button) if the role is not enough, instead of silently redirecting, so the user understands why.
+- `GuestOnly`: logged-in users visiting `/login` or `/register` go to `/app` (or back to `from`).
+- Unknown paths render `NotFoundPage` (inside the app layout under `/app`).
+`/reset-password` is intentionally **not** guest-only, so a reset link works even if another account is signed in on that browser (comment on line 75).
 
 ### Q: If route guards are only in the browser, are they secure?
 **[Basic]** They are **not** a security boundary — anyone can change JavaScript in the browser. They only give a good user experience. The backend checks every request again (`requireAdmin`, ownership checks). See [06-security.md](06-security.md).
 
 ### Q: How is the login session restored after a page refresh?
-**[Intermediate]** [AuthContext.jsx](../../frontend/src/context/AuthContext.jsx): the initial `status` is `'loading'` if a token exists in storage (line 17). An effect calls `GET /auth/me` (lines 33–51). Success → `authenticated` with the fresh user from the server; failure → token cleared, `anonymous`. The user object is never trusted from storage; only the token is stored.
+**[Intermediate]** [AuthContext.jsx](../../frontend/src/context/AuthContext.jsx): the initial `status` is `'loading'` if a token exists in storage (line 18). An effect calls `GET /auth/me` (lines 47–73). Success → `authenticated` with the fresh user from the server. A real rejection (401/403) → token cleared, `anonymous`. A network or 5xx failure **keeps** the token and retries every 5 s (the offline/server banner is shown meanwhile), because an outage must not sign people out. The user object is never trusted from storage; only the token is stored.
 
 ### Q: What happens when the server answers 401?
-**[Intermediate]** In [api.js](../../frontend/src/lib/api.js) line 87, if an authenticated request returns 401, the registered `unauthorizedHandler` is called. `AuthProvider` registers `logout` as this handler (lines 27–30): it clears the token, sets the user to null and **clears the whole React Query cache** so no data of the previous user stays in memory. The guards then redirect to `/login`. This handles expired tokens, password changes on another device, and changed `JWT_SECRET`.
+**[Intermediate]** In [api.js](../../frontend/src/lib/api.js) (line 138), if an authenticated request returns 401, the registered `unauthorizedHandler` is called. `AuthProvider` registers it (lines 30–42): if the user was signed in it shows **one** toast "Your session has expired. Please sign in again." (a fixed toast id, so ten failing requests don't give ten toasts), then `logout` clears the token, sets the user to null and **clears the whole React Query cache** so no data of the previous user stays in memory. `RequireAuth` then redirects to `/login`, remembering the page. This handles expired tokens, password changes on another device, and a changed `JWT_SECRET`.
 
 ### Q: Why TanStack Query instead of Redux or `useEffect` + `useState`?
 **[Intermediate]** Almost all our state is **server state** (tasks, employees, reports). TanStack Query gives, for free: caching by key, loading/error states, background refetch, deduplication of identical requests, retries and **invalidation** after mutations. Redux would require writing all of this by hand. The only client-only global state is "who is logged in", which fits in one small context.
 
 ### Q: How are caching and invalidation configured?
-**[Intermediate]** [main.jsx](../../frontend/src/main.jsx) lines 10–19:
+**[Intermediate]** [main.jsx](../../frontend/src/main.jsx) lines 38–61:
 - `staleTime: 15_000` — data is considered fresh for 15 s (no refetch when another component asks for it).
 - `refetchOnWindowFocus: true` — returning to the tab refreshes data.
 - `retry`: up to 2 retries, but **never on 4xx** (no point retrying "forbidden" or "validation failed").
-After a mutation, the page invalidates the affected keys, e.g. assigning invalidates `['tasks','task','dashboard','recommendations']` ([AllocationPage.jsx](../../frontend/src/pages/tasks/AllocationPage.jsx) line 40). The notification bell polls every 30 s, the dashboard every 60 s, the e-mail outbox every 10 s.
+After a mutation, the page invalidates the affected keys, e.g. assigning invalidates `['tasks','task','dashboard','recommendations']` ([AllocationPage.jsx](../../frontend/src/pages/tasks/AllocationPage.jsx) line 50). The notification bell polls every 30 s, the dashboard every 60 s, the e-mail outbox every 10 s.
 
 ### Q: How does the Kanban board work?
 **[Intermediate]** [TaskBoard.jsx](../../frontend/src/pages/tasks/TaskBoard.jsx): five columns (PENDING, ASSIGNED, IN_PROGRESS, REVIEW, COMPLETED) plus a collapsible "Cancelled" list. Uses the native HTML5 Drag-and-Drop API (no library). While dragging, only **valid target columns** are highlighted; invalid ones fade. Dropping calls `PATCH /tasks/:id/status`. Dropping a PENDING card on "Assigned" does not change status directly — it opens the **smart allocation page** for that task, because assigning needs a person. The board also auto-scrolls sideways when you drag near its edge.
@@ -106,7 +107,25 @@ We chose localStorage for simplicity and reduce the XSS risk (React escaping, no
 **[Basic]** `fetch` cannot report **upload progress**. `XMLHttpRequest` has `xhr.upload.onprogress`, which drives the progress bar ([api.js](../../frontend/src/lib/api.js) `upload` function).
 
 ### Q: What is code splitting and how do you use it?
-**[Intermediate]** All authenticated pages are loaded with `React.lazy(() => import(...))` ([App.jsx](../../frontend/src/App.jsx) lines 14–28) inside a `Suspense` fallback. Vite builds each page as a separate chunk. The landing and login pages load fast, and heavy libraries like Recharts are downloaded only when a chart page (dashboard/reports) is opened.
+**[Intermediate]** All authenticated pages are loaded with `lazyWithReload(() => import(...))`, a wrapper around `React.lazy` ([App.jsx](../../frontend/src/App.jsx) lines 21–35) inside a `Suspense` fallback. Vite builds each page as a separate chunk. The landing and login pages load fast, and heavy libraries like Recharts are downloaded only when a chart page (dashboard/reports) is opened.
+
+### Q: What happens to an open tab when you deploy a new version?
+**[Hard]** Chunk file names contain a content hash. After a new deployment the old chunks are gone, so a tab still running the old build fails with "Failed to fetch dynamically imported module" the next time it opens a lazy page. [chunkReload.js](../../frontend/src/lib/chunkReload.js) recognises that error (in `lazyWithReload` and in Vite's `vite:preloadError` event in `main.jsx`) and **reloads the page once**, which loads the new build. A timestamp in `sessionStorage` blocks a second reload within 30 s, so a chunk that is genuinely broken shows the error screen instead of looping forever. If storage is unavailable it doesn't auto-reload at all.
+
+### Q: How do you handle a component that crashes while rendering?
+**[Intermediate]** With React **error boundaries** ([ErrorBoundary.jsx](../../frontend/src/components/ErrorBoundary.jsx)) at two levels: one around the whole app in `main.jsx` (full-page `CrashScreen`), and one around the routed page in `AppLayout`, keyed by the navigation (`resetKey={location.key}`). A bug in one page shows a crash card inside the layout; the sidebar still works, and navigating elsewhere clears the error. Error boundaries only catch render errors, so data errors are handled separately (inline error states and toasts).
+
+### Q: How are API errors shown to the user without a toast storm?
+**[Intermediate]** [main.jsx](../../frontend/src/main.jsx) installs `QueryCache` and `MutationCache` `onError` handlers that show **one** toast (fixed id), and only for **unexpected** errors (network, 5xx; with the server's `reference` id). First loads show an inline error state instead; 4xx errors stay where they happen (form errors, 403/404 states); mutations with their own `onError` aren't toasted twice; and nothing is toasted while the network banner already says the server is unreachable. Queries never retry on 4xx.
+
+### Q: What is the offline / server-unreachable banner?
+**[Basic]** [NetworkStatus.jsx](../../frontend/src/components/NetworkStatus.jsx) listens to the browser's `online`/`offline` events and to `serverStatus` in `api.js` (set when requests fail at the network level). It shows "you're offline" or "Can't reach the server. Retrying automatically…", pings the API every 10 s while it is down, and refreshes the data when the connection comes back.
+
+### Q: How do the long lists load? Why not load everything?
+**[Intermediate]** With **infinite loading**. [usePagedQuery.js](../../frontend/src/lib/usePagedQuery.js) wraps TanStack's `useInfiniteQuery`: each page calls the API with `limit` and `offset`, reads the total from the `X-Total-Count` header, and stops when a page is short or the total is reached. `<LoadMore>` in [ui.jsx](../../frontend/src/components/ui.jsx) puts an invisible sentinel under the list; an `IntersectionObserver` loads the next page ~320 px before you reach the bottom, and a **Load more** button is there as a fallback (and for retry after an error, when auto-loading pauses). Used by the task list view, employees, users & approvals, notifications, task history and the e-mail outbox. Rows that shift between pages while you scroll are de-duplicated by id. The Kanban board still loads all matching tasks (a board needs every card), and the status tab badges come from `GET /tasks/summary` instead of downloading every task.
+
+### Q: What is the little magic-wand icon?
+**[Basic]** [MagicBadge.jsx](../../frontend/src/components/MagicBadge.jsx) (lucide `WandSparkles` with a green-to-teal gradient) marks **only** decisions made by the allocation engine: *Find best match*, *Assign best match*, the *Best match* and confidence badges, *Auto-allocate*, the Kanban "Find best match…" item, `AUTO_ASSIGNED` history and dashboard activity, and the command-palette entry that opens Auto-allocate (`/app/tasks?allocate=1`). Using it nowhere else keeps its meaning: when you see the wand, the algorithm decided.
 
 ### Q: How is the UI responsive?
 **[Basic]** Tailwind breakpoints (`sm`, `lg`): below `lg` the sidebar becomes a slide-in **drawer** with a menu button; the Kanban board becomes a horizontal scroll with snap points and columns about 85% of the screen width; tables scroll horizontally; forms stack vertically. The desktop sidebar width is applied through a CSS variable `--sidebar-w`.

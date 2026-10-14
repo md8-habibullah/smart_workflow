@@ -1,4 +1,5 @@
 import { defaultExecutor } from '../config/db.js';
+import { withPage } from '../utils/pagination.js';
 
 const PUBLIC_COLUMNS = `
   u.id, u.email, u.role, u.approval_status, u.is_active, u.rejection_reason,
@@ -46,31 +47,47 @@ export const updateRole = (userId, role, ex = defaultExecutor) =>
 export const updateActive = (userId, isActive, ex = defaultExecutor) =>
   ex.query(`UPDATE users SET is_active = ?, updated_at = DATETIME('now') WHERE id = ?`, [isActive ? 1 : 0, userId]);
 
-export const listUsers = ({ status, role, search } = {}, ex = defaultExecutor) => {
-  let sql = `
-    SELECT ${PUBLIC_COLUMNS},
-           e.id AS employee_id, e.employee_code, e.full_name, e.job_position, e.phone_number,
-           e.category, e.department_id, d.name AS department_name
-    FROM users u
-    LEFT JOIN employees e ON e.user_id = u.id
-    LEFT JOIN departments d ON d.id = e.department_id
-    WHERE 1 = 1`;
+const userWhere = ({ status, role, search } = {}) => {
+  let where = ' WHERE 1 = 1';
   const params = [];
   if (status) {
-    sql += ' AND u.approval_status = ?';
+    where += ' AND u.approval_status = ?';
     params.push(status);
   }
   if (role) {
-    sql += ' AND u.role = ?';
+    where += ' AND u.role = ?';
     params.push(role);
   }
   if (search) {
-    sql += ' AND (u.email LIKE ? OR e.full_name LIKE ? OR e.employee_code LIKE ?)';
+    where += ' AND (u.email LIKE ? OR e.full_name LIKE ? OR e.employee_code LIKE ?)';
     const like = `%${search}%`;
     params.push(like, like, like);
   }
-  sql += ' ORDER BY u.created_at DESC, u.id DESC';
-  return ex.query(sql, params);
+  return { where, params };
+};
+
+/** Newest first; `filters.limit` (+ `filters.offset`) returns one page. */
+export const listUsers = (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = userWhere(filters);
+  const page = withPage(
+    `SELECT ${PUBLIC_COLUMNS},
+            e.id AS employee_id, e.employee_code, e.full_name, e.job_position, e.phone_number,
+            e.category, e.department_id, d.name AS department_name
+     FROM users u
+     LEFT JOIN employees e ON e.user_id = u.id
+     LEFT JOIN departments d ON d.id = e.department_id
+     ${where}
+     ORDER BY u.created_at DESC, u.id DESC`,
+    params,
+    filters
+  );
+  return ex.query(page.sql, page.params);
+};
+
+export const countUsers = async (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = userWhere(filters);
+  const row = await ex.queryOne(`SELECT COUNT(*) AS c FROM users u LEFT JOIN employees e ON e.user_id = u.id ${where}`, params);
+  return Number(row.c);
 };
 
 export const setAvatar = (userId, avatarFile, ex = defaultExecutor) =>

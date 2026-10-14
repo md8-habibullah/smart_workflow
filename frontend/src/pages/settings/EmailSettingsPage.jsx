@@ -31,6 +31,7 @@ import {
   FormError,
   IconButton,
   Input,
+  LoadMore,
   Modal,
   PageHeader,
   QueryView,
@@ -43,6 +44,9 @@ import {
   useConfirm,
 } from '../../components/ui'
 import { useDebounced } from '../../lib/useDebounced'
+import { usePagedQuery } from '../../lib/usePagedQuery'
+
+const outboxRows = (data) => data?.items
 
 /** One-click presets for common providers (the admin still enters the username/password). */
 const PRESETS = [
@@ -414,9 +418,11 @@ function Outbox({ counts }) {
   const [confirm, confirmDialog] = useConfirm()
   const debounced = useDebounced(search, 300)
 
-  const outbox = useQuery({
+  const outbox = usePagedQuery({
     queryKey: ['email-outbox', status, debounced],
-    queryFn: () => settingsApi.outbox({ status: status || undefined, search: debounced || undefined, limit: 100 }),
+    fetchPage: (page) => settingsApi.outboxPage({ status: status || undefined, search: debounced || undefined, ...page }),
+    pageSize: 50,
+    getItems: outboxRows,
     refetchInterval: 10_000,
   })
   const message = useQuery({
@@ -433,7 +439,7 @@ function Outbox({ counts }) {
   const retry = useMutation({ mutationFn: settingsApi.retry, onSuccess: (r) => (toast.success(r.message), refresh()), onError: (e) => toast.error(e.message) })
   const clear = useMutation({ mutationFn: settingsApi.clearOutbox, onSuccess: (r) => (toast.success(r.message), refresh()), onError: (e) => toast.error(e.message) })
 
-  const live = outbox.data?.counts || counts
+  const live = outbox.firstPage?.counts || counts
   const tabs = [
     { value: '', label: 'All', count: live.PENDING + live.SENT + live.FAILED },
     { value: 'PENDING', label: 'Queued', count: live.PENDING },
@@ -482,7 +488,7 @@ function Outbox({ counts }) {
               <Skeleton key={i} className="h-10" />
             ))}
           </div>
-        ) : !outbox.data?.items.length ? (
+        ) : !outbox.items.length ? (
           <EmptyState icon={Inbox} title="No e-mails here yet" description="Enable e-mail, then trigger something: assign a task, comment, or send a test." className="py-12" />
         ) : (
           <table className="w-full min-w-[720px] text-sm">
@@ -497,7 +503,7 @@ function Outbox({ counts }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {outbox.data.items.map((m) => (
+              {outbox.items.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50/60">
                   <td className="max-w-[180px] truncate px-5 py-3 font-medium text-slate-900" title={m.to_email}>{m.to_email}</td>
                   <td className="max-w-[220px] truncate px-3 py-3 text-slate-700" title={m.subject}>{m.subject}</td>
@@ -531,6 +537,7 @@ function Outbox({ counts }) {
           </table>
         )}
       </div>
+      <LoadMore query={outbox} noun="messages" className="border-t border-slate-100" />
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={message.data?.subject || 'E-mail preview'} description={message.data ? `To ${message.data.to_email}` : undefined} size="lg">
         {message.isPending ? (

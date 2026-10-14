@@ -4,6 +4,7 @@ import * as workLogController from '../controllers/workLogController.js';
 import * as commentController from '../controllers/commentController.js';
 import * as attachmentController from '../controllers/attachmentController.js';
 import { attachmentUpload } from '../middleware/upload.js';
+import { requireUploadsEnabled } from '../utils/demo.js';
 import { authenticate, requireAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -12,6 +13,7 @@ router.use(authenticate);
 
 // Core CRUD. Employees only ever see their own tasks (enforced in controller/service).
 router.get('/', taskController.getTasks);
+router.get('/summary', taskController.getTaskSummary);
 router.get('/:id', taskController.getTaskById);
 router.post('/', requireAdmin, taskController.createTask);
 router.patch('/:id', requireAdmin, taskController.updateTask);
@@ -22,6 +24,7 @@ router.patch('/:id/status', taskController.changeStatus);
 router.get('/:id/history', taskController.getTaskHistory);
 
 // Smart allocation and assignment
+router.post('/auto-allocate', requireAdmin, taskController.autoAllocate);
 router.get('/:id/recommendations', requireAdmin, taskController.getTaskRecommendations);
 router.post('/:id/assign', requireAdmin, taskController.assignTask);
 router.post('/:id/auto-assign', requireAdmin, taskController.autoAssignTask);
@@ -40,7 +43,7 @@ router.delete('/:id/comments/:commentId', commentController.deleteComment);
 
 // Attachments (multipart/form-data, field "files", up to 5 per request)
 router.get('/:id/attachments', attachmentController.listAttachments);
-router.post('/:id/attachments', attachmentUpload, attachmentController.uploadAttachments);
+router.post('/:id/attachments', requireUploadsEnabled, attachmentUpload, attachmentController.uploadAttachments);
 router.get('/:id/attachments/:attachmentId/download', attachmentController.downloadAttachment);
 router.delete('/:id/attachments/:attachmentId', attachmentController.deleteAttachment);
 

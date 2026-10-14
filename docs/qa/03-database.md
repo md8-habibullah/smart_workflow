@@ -5,7 +5,7 @@ Related reading: [schema.js](../../backend/src/config/schema.js), [db.js](../../
 
 ---
 
-## Entity–relationship diagram (schema v4)
+## Entity–relationship diagram (schema v5)
 
 ```mermaid
 erDiagram
@@ -39,7 +39,7 @@ erDiagram
 
 | Table | Purpose | Key constraints |
 | --- | --- | --- |
-| `users` | Login identity | `email` UNIQUE; CHECK `role` ∈ SUPER_ADMIN/ADMIN/EMPLOYEE; CHECK `approval_status` ∈ PENDING/APPROVED/REJECTED; `password_changed_at` (v4); `avatar_file` (v3) |
+| `users` | Login identity | `email` UNIQUE; CHECK `role` ∈ SUPER_ADMIN/ADMIN/EMPLOYEE; CHECK `approval_status` ∈ PENDING/APPROVED/REJECTED; `password_changed_at` (v4, repaired by v5); `avatar_file` (v3) |
 | `employees` | Profile, 1:1 with user | `user_id` UNIQUE + FK CASCADE; `employee_code` UNIQUE; CHECK `0 < daily_capacity_hours <= 24`; `department_id` FK SET NULL |
 | `departments` | Org units | `name` UNIQUE |
 | `skills` | Skill catalogue | `name` UNIQUE |
@@ -170,9 +170,9 @@ Honest note: `idx_users_email` is **redundant**, because `email UNIQUE` already 
 ## Migrations and backups
 
 ### Q: How do migrations work?
-**[Intermediate]** [schema.js](../../backend/src/config/schema.js) has an ordered array `migrations` (4 functions). SQLite's `PRAGMA user_version` (an integer stored in the file header) records how many have run.
+**[Intermediate]** [schema.js](../../backend/src/config/schema.js) has an ordered array `migrations` (5 functions). SQLite's `PRAGMA user_version` (an integer stored in the file header) records how many have run.
 ```js
-// backend/src/config/schema.js, lines 310-323
+// backend/src/config/schema.js, lines 318-331
 export const runMigrations = (db) => {
   const current = db.exec('PRAGMA user_version')[0].values[0][0];
   for (let version = current + 1; version <= migrations.length; version++) {
@@ -188,7 +188,7 @@ export const runMigrations = (db) => {
   }
 };
 ```
-Each pending migration runs in **its own transaction** together with the version bump, so a failed migration leaves the DB at the previous version. `SCHEMA_VERSION = migrations.length` (line 308), currently **4**.
+Each pending migration runs in **its own transaction** together with the version bump, so a failed migration leaves the DB at the previous version. `SCHEMA_VERSION = migrations.length` (line 316), currently **5**.
 
 ### Q: What does each migration do?
 **[Basic]**
@@ -199,12 +199,15 @@ Each pending migration runs in **its own transaction** together with the version
 | 2 | `tasks.completed_at`, one-current-assignment index, 4 more indexes, repair of the broken legacy seed password hash |
 | 3 | `users.avatar_file`, `attachments` table + index |
 | 4 | `users.password_changed_at`, `email_settings` (single row), `email_outbox`, `password_resets` |
+| 5 | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (a no-op on correct databases) |
+
+*Why a repair migration?* Some databases ran an early build of migration 4 that did not add the column. Editing migration 4 would not help them (they are already at `user_version = 4` and never re-run it), so a new migration fixes them. That is the "never edit a released migration" rule in practice.
 
 ### Q: Why must you never edit a released migration?
 **[Intermediate]** Databases that already ran migration N have `user_version >= N` and will **never run it again**. If you change migration 3, old databases keep the old version and new databases get the new one, so they silently differ. The rule (comment on line 6 of `schema.js`): **append a new migration instead**.
 
 ### Q: Why do migrations use `IF NOT EXISTS` and check `PRAGMA table_info` before `ALTER TABLE`?
-**[Hard]** To be **idempotent** for databases created before versioning existed (they have tables but `user_version = 0`). Migration 1 must not fail on existing tables, and migrations 2–4 check whether a column exists before `ALTER TABLE … ADD COLUMN`, because SQLite has no `ADD COLUMN IF NOT EXISTS`.
+**[Hard]** To be **idempotent** for databases created before versioning existed (they have tables but `user_version = 0`). Migration 1 must not fail on existing tables, and migrations 2–5 check whether a column exists before `ALTER TABLE … ADD COLUMN`, because SQLite has no `ADD COLUMN IF NOT EXISTS`.
 
 ### Q: How are backups made before a migration?
 **[Intermediate]** [db.js](../../backend/src/config/db.js) lines 53–61, `backupBeforeMigration(fromVersion)`: if the file exists, is not in-memory, and its version is between 1 and `SCHEMA_VERSION − 1`, it copies the file to `backend/data/backups/<name>.v<old>.<timestamp>.db` **before** running migrations. To roll back: stop the server and copy the backup over `smart_workflow.db`. The `backups/` folder is git-ignored.
@@ -253,12 +256,12 @@ This section walks through [db.js](../../backend/src/config/db.js) line by line.
 ### Q: How is `backend/data/smart_workflow.db` opened?
 **[Intermediate]**
 ```js
-// db.js lines 19-32
+// db.js lines 20-35
 const inMemory = env.DB_FILE === ':memory:';
 const dbDir = path.resolve(__dirname, '../../data');
 const dbPath = inMemory ? null : path.resolve(dbDir, env.DB_FILE);
 
-const SQL = await initSqlJs();                       // load SQLite compiled to WebAssembly
+const SQL = await initSqlJs({ locateFile: (file) => path.join(sqlJsDir, file) }); // SQLite in WebAssembly (path explicit so Vercel bundles the .wasm)
 
 const openDatabase = () => {
   if (dbPath && fs.existsSync(dbPath)) {
@@ -269,13 +272,13 @@ const openDatabase = () => {
 
 export let db = openDatabase();
 ```
-1. `env.DB_FILE` defaults to `smart_workflow.db` ([env.js](../../backend/src/config/env.js) line 21); the path is always inside `backend/data/`.
+1. `env.DB_FILE` defaults to `smart_workflow.db` ([env.js](../../backend/src/config/env.js) line 44; always `:memory:` on Vercel); the path is always inside `backend/data/`.
 2. `initSqlJs()` loads the WebAssembly SQLite engine (top-level `await`).
 3. `fs.readFileSync` reads the file's bytes; `new SQL.Database(bytes)` creates an **in-memory** database from them.
 4. From now on **all reads and writes happen in RAM**. The file on disk is only a saved copy.
 
 ### Q: What happens right after opening?
-**[Intermediate]** `initialise()` (lines 63–78) runs once at import time:
+**[Intermediate]** `initialise()` (lines 66–83) runs once at import time:
 1. `PRAGMA foreign_keys = ON`.
 2. Reads `PRAGMA user_version` (old version).
 3. `backupBeforeMigration` copies the file if an upgrade is needed.
@@ -360,6 +363,9 @@ Run them **while the server is stopped**; otherwise the running server will over
 
 ### Q: How do the tests avoid touching the real `.db` file?
 **[Basic]** [setupEnv.js](../../backend/tests/setupEnv.js) sets `DB_FILE=':memory:'` before the app is imported. Then `inMemory = true`, `dbPath = null`, `saveDb()` returns immediately, and every Jest test file (Jest gives each file its own module registry) gets a fresh, seeded in-memory database.
+
+### Q: Where is the data stored when the app runs on Vercel?
+**[Intermediate]** Only in memory. On Vercel `env.DB_FILE` is always `:memory:` ([env.js](../../backend/src/config/env.js) line 44, `DB_FILE` is ignored there), because serverless functions have a read-only disk and run as several short-lived instances. On each **cold start** `initialise()` finds no users and runs the seed, with dates relative to "now", so the demo always looks fresh. Visitors can change data, but changes vanish when the instance is recycled, and two parallel instances don't see each other's changes. That is acceptable for a public demo; a permanent deployment needs a persistent disk (single-server mode) or a hosted database such as Turso/libSQL, which would only change `db.js`. See [DEPLOYMENT.md](../ai/DEPLOYMENT.md).
 
 ### Q: Why sql.js and not the `sqlite3` or `better-sqlite3` npm package?
 **[Intermediate]** Native packages need a C/C++ build or a matching prebuilt binary for the exact Node version and OS. On student and lab machines this often fails (the original project had the same problem with native `bcrypt`, audit defect #2). sql.js is pure WebAssembly: `npm install` always works on Windows, macOS and Linux. The trade-offs are the in-memory model, a full-file write per commit, and no multi-process access — acceptable at this scale, and isolated in `db.js`.

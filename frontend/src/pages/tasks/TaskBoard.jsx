@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight, Ban, Clock, GripVertical, MoreHorizontal, Target } from 'lucide-react'
+import { ArrowRight, Ban, Clock, GripVertical, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { tasksApi } from '../../lib/endpoints'
 import { STATUS_META, hours, transitionLabel } from '../../lib/format'
 import { Avatar, cn } from '../../components/ui'
 import { Deadline, PriorityBadge } from '../../components/badges'
+import { MagicIcon } from '../../components/MagicBadge'
 
 const COLUMNS = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'COMPLETED']
 
@@ -196,7 +197,7 @@ export default function TaskBoard({ tasks }) {
                     <div className="flex h-20 animate-fade-in items-center justify-center rounded-xl border-2 border-dashed border-brand-400 bg-white/70 text-xs font-semibold text-brand-700">
                       {status === 'ASSIGNED' ? (
                         <span className="flex items-center gap-1.5">
-                          <Target className="size-4" /> Drop to find the best match
+                          <MagicIcon /> Drop to let the engine find the best match
                         </span>
                       ) : (
                         `Drop: ${transitionLabel(dragging.status, status)}`
@@ -327,7 +328,11 @@ function BoardCard({ task: t, status, targets, pending, landed, lifted, onDragSt
                     >
                       <span className={cn('size-2 rounded-full', COLUMN_ACCENT[to])} />
                       <span className="flex-1">{to === 'ASSIGNED' ? 'Find best match…' : transitionLabel(status, to)}</span>
-                      <ArrowRight className="size-3.5 text-slate-300" />
+                      {to === 'ASSIGNED' ? (
+                        <MagicIcon className="size-3.5" />
+                      ) : (
+                        <ArrowRight className="size-3.5 text-slate-300" />
+                      )}
                     </button>
                   ))}
                 </div>

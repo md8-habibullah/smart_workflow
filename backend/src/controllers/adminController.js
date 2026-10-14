@@ -1,12 +1,14 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { badRequest, conflict, forbidden, notFound, parseId } from '../utils/errors.js';
+import { setTotalCount } from '../utils/pagination.js';
 import * as userRepository from '../repositories/userRepository.js';
 import * as notificationRepository from '../repositories/notificationRepository.js';
 import * as emailRepository from '../repositories/emailRepository.js';
 import * as authService from '../services/authService.js';
 import { withTransaction } from '../config/db.js';
-import { rejectSchema, createUserSchema, roleSchema, activeSchema, resetPasswordSchema } from '../validators/schemas.js';
+import { rejectSchema, createUserSchema, roleSchema, activeSchema, resetPasswordSchema, pageQuery } from '../validators/schemas.js';
 import * as employeeRepository from '../repositories/employeeRepository.js';
+import { assertNotProtectedDemoAccount } from '../utils/demo.js';
 
 const loadUser = async (id) => {
   const user = await userRepository.findUserById(id);
@@ -67,11 +69,17 @@ export const rejectRegistration = asyncHandler(async (req, res) => {
 
 export const listUsers = asyncHandler(async (req, res) => {
   const { status, role, search } = req.query;
-  const list = await userRepository.listUsers({
+  const filters = {
     status: ['PENDING', 'APPROVED', 'REJECTED'].includes(status) ? status : undefined,
     role: ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE'].includes(role) ? role : undefined,
-    search: typeof search === 'string' && search.trim() ? search.trim() : undefined
-  });
+    search: typeof search === 'string' && search.trim() ? search.trim() : undefined,
+    ...pageQuery.parse(req.query)
+  };
+  const [list, total] = await Promise.all([
+    userRepository.listUsers(filters),
+    filters.limit ? userRepository.countUsers(filters) : null
+  ]);
+  setTotalCount(res, total ?? list.length);
   res.status(200).json({ success: true, data: list });
 });
 
@@ -95,6 +103,7 @@ export const changeRole = asyncHandler(async (req, res) => {
   assertCanManage(req.user, target);
   if (target.approval_status !== 'APPROVED') throw badRequest('Approve the account before changing its role.');
   if (target.role === role) throw badRequest(`User is already ${ROLE_LABEL[role]}.`);
+  assertNotProtectedDemoAccount(target.email, 'changing the role');
 
   const employee = await employeeRepository.findEmployeeByUserId(userId);
   await withTransaction(async (tx) => {
@@ -125,6 +134,7 @@ export const setActive = asyncHandler(async (req, res) => {
   const { isActive } = activeSchema.parse(req.body);
   const target = await loadUser(userId);
   assertCanManage(req.user, target);
+  assertNotProtectedDemoAccount(target.email, 'deactivating');
   await withTransaction(async (tx) => {
     if (!isActive && target.role === 'SUPER_ADMIN' && (await userRepository.countActiveSuperAdmins(tx)) <= 1) {
       throw conflict('At least one active super admin must remain.');
@@ -140,6 +150,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   const { newPassword } = resetPasswordSchema.parse(req.body);
   const target = await loadUser(userId);
   assertCanManage(req.user, target);
+  assertNotProtectedDemoAccount(target.email, 'resetting the password');
   await userRepository.updatePassword(userId, await authService.hashPassword(newPassword));
   await notificationRepository.createNotification(
     userId,

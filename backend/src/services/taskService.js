@@ -6,7 +6,7 @@ import * as skillRepository from '../repositories/skillRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 import * as notificationRepository from '../repositories/notificationRepository.js';
 import * as workLogRepository from '../repositories/workLogRepository.js';
-import { calculateTaskRecommendations } from './allocationEngine.js';
+import { calculateTaskRecommendations, planAllocation } from './allocationEngine.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { toSqlDate, toSqlDateTime } from '../utils/dates.js';
 import * as attachmentRepository from '../repositories/attachmentRepository.js';
@@ -296,6 +296,23 @@ export const autoAssignTask = (taskId, adminUser) =>
     if (!best) throw conflict('No eligible employee found for this task. Review the required skills or add project members.');
     return assignWithin(tx, task, best.employeeId, adminUser, { force: false, action: 'AUTO_ASSIGNED' });
   });
+
+/**
+ * Allocates many pending tasks in one go with the batch planner.
+ * dryRun returns the plan only; otherwise the plan is computed and applied in
+ * one transaction (all assignments succeed or none do).
+ */
+export const autoAllocate = async (taskIds, adminUser, { dryRun = false } = {}) => {
+  if (dryRun) return { ...(await planAllocation(taskIds)), applied: false };
+  return withTransaction(async (tx) => {
+    const plan = await planAllocation(taskIds, tx);
+    for (const item of plan.assignments) {
+      const task = await loadAssignableTask(item.taskId, tx);
+      await assignWithin(tx, task, item.employeeId, adminUser, { force: false, action: 'AUTO_ASSIGNED' });
+    }
+    return { ...plan, applied: true };
+  });
+};
 
 // ------------------------------------------------------------------ work logs
 

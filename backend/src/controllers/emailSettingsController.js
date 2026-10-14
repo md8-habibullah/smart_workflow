@@ -1,10 +1,12 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { badRequest, notFound, parseId } from '../utils/errors.js';
+import { setTotalCount } from '../utils/pagination.js';
 import * as emailRepository from '../repositories/emailRepository.js';
 import * as mailService from '../services/mailService.js';
 import { EMAIL_EVENTS } from '../utils/emailTemplates.js';
 import { decryptSecret, encryptSecret } from '../utils/secretBox.js';
 import { emailSettingsSchema, outboxQuerySchema, testEmailSchema } from '../validators/schemas.js';
+import { assertSmtpAllowed } from '../utils/demo.js';
 
 /** API shape. The SMTP password is never returned, only whether one is stored. */
 const toDto = (s) => ({
@@ -54,6 +56,7 @@ export const getEmailSettings = asyncHandler(async (req, res) => {
 
 export const updateEmailSettings = asyncHandler(async (req, res) => {
   const data = emailSettingsSchema.parse(req.body);
+  assertSmtpAllowed(data.transport);
   const current = await emailRepository.getSettings();
   const row = toRow(data, current);
   if (row.transport === 'SMTP' && row.smtp_user && !row.smtp_password_enc) {
@@ -70,6 +73,7 @@ export const updateEmailSettings = asyncHandler(async (req, res) => {
 
 export const sendTestEmail = asyncHandler(async (req, res) => {
   const { to, settings } = testEmailSchema.parse(req.body);
+  assertSmtpAllowed(settings?.transport ?? (await emailRepository.getSettings()).transport);
   let overrides = {};
   if (settings) {
     const current = await emailRepository.getSettings();
@@ -91,7 +95,12 @@ export const sendTestEmail = asyncHandler(async (req, res) => {
 
 export const listOutbox = asyncHandler(async (req, res) => {
   const filters = outboxQuerySchema.parse(req.query);
-  const [items, counts] = await Promise.all([emailRepository.listOutbox(filters), emailRepository.countByStatus()]);
+  const [items, counts, total] = await Promise.all([
+    emailRepository.listOutbox(filters),
+    emailRepository.countByStatus(),
+    emailRepository.countOutbox(filters)
+  ]);
+  setTotalCount(res, total);
   res.status(200).json({ success: true, data: { items, counts } });
 });
 

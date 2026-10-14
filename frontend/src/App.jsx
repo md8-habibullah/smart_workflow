@@ -2,7 +2,7 @@
  * Smart Workforce & Task Allocation System: React routes
  * @author MD. Habibullah Sharif <https://habibullah.dev> (https://github.com/md8-habibullah)
  */
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import { useAuth } from './context/AuthContext'
 import AppLayout from './components/layout/AppLayout'
@@ -13,8 +13,11 @@ import RegisterPage from './pages/public/RegisterPage'
 import ForgotPasswordPage from './pages/public/ForgotPasswordPage'
 import ResetPasswordPage from './pages/public/ResetPasswordPage'
 import NotFoundPage from './pages/NotFoundPage'
+import ForbiddenPage from './pages/ForbiddenPage'
+import { lazyWithReload as lazy } from './lib/chunkReload'
 
 // Authenticated pages are code-split so the landing/login bundle stays small.
+// lazyWithReload reloads once if a chunk vanished because a new version was deployed.
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
 const TasksPage = lazy(() => import('./pages/tasks/TasksPage'))
 const TaskDetailPage = lazy(() => import('./pages/tasks/TaskDetailPage'))
@@ -35,24 +38,28 @@ function RequireAuth({ children }) {
   const { status } = useAuth()
   const location = useLocation()
   if (status === 'loading') return <PageLoader label="Restoring your session…" />
-  if (status !== 'authenticated') return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  // Keep the query string too, so filters/links survive the trip through the login page.
+  if (status !== 'authenticated') return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
   return children
 }
 
 function RequireAdmin({ children }) {
   const { isAdmin } = useAuth()
-  return isAdmin ? children : <Navigate to="/app" replace />
+  return isAdmin ? children : <ForbiddenPage />
 }
 
 function RequireSuperAdmin({ children }) {
   const { isSuperAdmin } = useAuth()
-  return isSuperAdmin ? children : <Navigate to="/app" replace />
+  return isSuperAdmin ? children : <ForbiddenPage requirement="super administrators" />
 }
 
 function GuestOnly({ children }) {
   const { status } = useAuth()
+  const location = useLocation()
   if (status === 'loading') return <PageLoader />
-  if (status === 'authenticated') return <Navigate to="/app" replace />
+  // Signing in re-renders this guard first, so it must honour `from` (set by RequireAuth) itself.
+  const from = location.state?.from
+  if (status === 'authenticated') return <Navigate to={typeof from === 'string' && from.startsWith('/app') ? from : '/app'} replace />
   return children
 }
 

@@ -9,6 +9,8 @@ import * as departmentRepository from '../repositories/departmentRepository.js';
 import * as notificationRepository from '../repositories/notificationRepository.js';
 import * as emailRepository from '../repositories/emailRepository.js';
 import { sha256 } from '../utils/secretBox.js';
+import { assertNotProtectedDemoAccount, isProtectedDemoAccount } from '../utils/demo.js';
+import { demoUploadsAllowed, isDemoMode } from '../config/env.js';
 import { AppError, badRequest, conflict, unauthorized } from '../utils/errors.js';
 
 // Constant-time-ish defence against user enumeration: compare against a dummy hash when the email is unknown.
@@ -139,6 +141,7 @@ export const getSessionUser = async (userId) => {
 
 export const changePassword = async (userId, currentPassword, newPassword) => {
   const user = await userRepository.findUserWithPasswordById(userId);
+  assertNotProtectedDemoAccount(user.email, 'changing the password');
   if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
     throw badRequest('Current password is incorrect.', [{ field: 'currentPassword', message: 'Current password is incorrect.' }]);
   }
@@ -153,7 +156,7 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
 /** Public: whether self-service password reset is available (e-mail enabled). */
 export const getPublicOptions = async () => {
   const settings = await emailRepository.getSettings();
-  return { passwordResetByEmail: Boolean(settings?.enabled) };
+  return { passwordResetByEmail: Boolean(settings?.enabled), demoMode: isDemoMode(), uploadsEnabled: demoUploadsAllowed() };
 };
 
 /**
@@ -168,6 +171,8 @@ export const requestPasswordReset = async (email) => {
   }
   const user = await userRepository.findUserByEmail(email);
   if (!user || !user.is_active || user.approval_status !== 'APPROVED') return;
+  // In the public demo anyone can read the outbox, so built-in accounts never get reset links.
+  if (isProtectedDemoAccount(user.email)) return;
 
   const token = crypto.randomBytes(32).toString('hex');
   const link = `${settings.app_url.replace(/\/+$/, '')}/reset-password?token=${token}`;

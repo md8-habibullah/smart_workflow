@@ -36,7 +36,7 @@ flowchart LR
 - The **backend** is an Express application with a **layered architecture**: routes → controllers → services → repositories → database.
 - The **database** is SQLite, run in memory by sql.js and saved to one file after every write.
 - A small **background mail worker** sends e-mails from an outbox table.
-In development, Vite serves React on port 5173 and proxies `/api` to Express on 5000. In production, Express serves the built React files itself ([app.js](../../backend/src/app.js) lines 75–79), so it is one process on one port.
+In development, Vite serves React on port 5173 and proxies `/api` to Express on 5000. In single-server production, Express serves the built React files itself ([app.js](../../backend/src/app.js) lines 90–94), so it is one process on one port. On Vercel, the CDN serves the React build and the same Express app runs as one serverless function ([api/index.mjs](../../api/index.mjs)).
 
 ### Q: What are the layers and what is the job of each?
 **[Basic]**
@@ -47,13 +47,16 @@ In development, Vite serves React on port 5173 and proxies `/api` to Express on 
 | Controllers | [controllers/](../../backend/src/controllers) | Parse `req`, validate with Zod, call services, send JSON | Write SQL |
 | Services | [services/](../../backend/src/services) | Business rules: state machine, eligibility, scoring, transactions, notifications | Know about `req`/`res` |
 | Repositories | [repositories/](../../backend/src/repositories) | All SQL for a group of tables, always parameterised | Check permissions |
-| Config | [config/](../../backend/src/config) | env, DB connection + queue, migrations, seed | |
-| Utils | [utils/](../../backend/src/utils) | Errors, async wrapper, dates, e-mail templates, encryption | |
+| Middleware | [middleware/](../../backend/src/middleware) | Auth, rate limits, uploads, 404/405, central error handler | |
+| Config | [config/](../../backend/src/config) | env (root `.env`, demo mode), DB connection + queue, migrations, seed | |
+| Utils | [utils/](../../backend/src/utils) | Errors, async wrapper, dates, pagination, demo guards, e-mail templates, encryption | |
+
+The allocation maths is split out into [allocationScoring.js](../../backend/src/services/allocationScoring.js), a pure module with **no imports**; `allocationEngine.js` only loads data and explains the results.
 
 ### Q: Why use layers at all? Isn't it extra code?
 **[Intermediate]** Layers give **separation of concerns**:
 - You can test business rules without HTTP details, and change SQL without touching rules.
-- The allocation engine is reused by four features (recommendations, assign, reassign, auto-assign) because it does not depend on `req`.
+- The allocation engine is reused by five features (recommendations, assign, reassign, auto-assign, auto-allocate) because it does not depend on `req`; its scoring core does not even depend on the database.
 - If we move from SQLite to PostgreSQL, only `config/db.js` and some SQL in repositories change; services and controllers stay the same.
 - New team members know where to look: "Where is the SQL for tasks?" → `taskRepository.js`.
 
@@ -88,15 +91,16 @@ sequenceDiagram
     UI->>UI: invalidate ['tasks','task','dashboard'] queries
 ```
 
-Files: [app.js](../../backend/src/app.js) → [taskRoutes.js](../../backend/src/routes/taskRoutes.js) line 21 → [authMiddleware.js](../../backend/src/middleware/authMiddleware.js) lines 22–62 → [taskController.js](../../backend/src/controllers/taskController.js) lines 46–51 → [taskService.js](../../backend/src/services/taskService.js) lines 169–214 → [db.js](../../backend/src/config/db.js) lines 153–174.
+Files: [app.js](../../backend/src/app.js) → [taskRoutes.js](../../backend/src/routes/taskRoutes.js) line 23 → [authMiddleware.js](../../backend/src/middleware/authMiddleware.js) lines 22–69 → [taskController.js](../../backend/src/controllers/taskController.js) lines 64–70 → [taskService.js](../../backend/src/services/taskService.js) lines 169–214 → [db.js](../../backend/src/config/db.js) lines 156–177.
 
 ### Q: What happens when something goes wrong inside that request?
 **[Intermediate]**
 - Services throw an `AppError` with a status code (`badRequest`, `forbidden`, `conflict`… in [errors.js](../../backend/src/utils/errors.js)).
 - `withTransaction` catches it, runs `ROLLBACK`, and re-throws.
 - [asyncHandler.js](../../backend/src/utils/asyncHandler.js) passes the rejected promise to `next(err)`.
-- The global [errorHandler.js](../../backend/src/middleware/errorHandler.js) turns it into `{ success: false, message, errors }`. Zod errors → 400, Multer errors → 400/413, SQLite `UNIQUE` → 409, `FOREIGN KEY`/`CHECK` → 400, unknown → 500 with a generic message (details only in the server log).
-- It also deletes any uploaded files from that failed request (line 23).
+- The global [errorHandler.js](../../backend/src/middleware/errorHandler.js) turns it into `{ success: false, message, errors }`. Zod errors → 400 with a field list, malformed JSON → 400, body too large → 413, bad charset → 415, Multer errors → 400/413, JWT errors → 401, SQLite `UNIQUE` → 409, `FOREIGN KEY`/`CHECK`/`NOT NULL` → 400, unknown → 500 with a generic message and a short `reference` id that is also written to the server log (the stack is only in the response in development).
+- It also deletes any uploaded files from that failed request (`cleanupRequestFiles`).
+- A URL that matches nothing goes to [notFoundHandler.js](../../backend/src/middleware/notFoundHandler.js): a known path with the wrong method → **405** with an `Allow` header, otherwise a JSON 404.
 
 ### Q: What design patterns did you use? Give a concrete example of each.
 **[Intermediate]**
@@ -153,26 +157,34 @@ Trade-off: SEO does not matter here (it is an internal tool behind login), so SP
 The frontend client ([api.js](../../frontend/src/lib/api.js)) relies on this: it throws an `ApiError` with `message` and `details` whenever `success` is false, so every page shows errors the same way.
 
 ### Q: Which HTTP status codes do you use and when?
-**[Basic]** `200` OK · `201` created · `400` validation or business rule broken · `401` no/invalid/expired token · `403` logged in but not allowed · `404` not found · `409` conflict (duplicate, wrong state, already assigned) · `413` file too large · `429` rate limit · `503` password reset by e-mail not available · `500` unexpected error.
+**[Basic]** `200` OK · `201` created · `400` validation or business rule broken, malformed JSON · `401` no/invalid/expired token · `403` logged in but not allowed (or a public-demo restriction) · `404` not found · `405` wrong method on a known path (+ `Allow` header) · `409` conflict (duplicate, wrong state, already assigned) · `413` body or file too large · `415` unsupported body charset · `429` rate limit · `503` password reset by e-mail not available · `500` unexpected error (with a `reference` id).
 
 ### Q: How is the backend started and stopped safely?
 **[Intermediate]** [server.js](../../backend/src/server.js):
-- `app.listen(PORT)`; if the port is busy, it prints a clear message and exits (lines 15–22).
-- After listening, it starts the mail worker if `EMAIL_WORKER` is on (line 12).
-- On `SIGINT`/`SIGTERM` it stops the worker, calls `saveDb()` one more time, closes the server, and force-exits after 3 seconds (lines 24–30).
+- `app.listen(PORT)`; if the port is busy, it prints a clear message and exits (lines 20–27).
+- After listening, it starts the mail worker if `EMAIL_WORKER` is on (line 17).
+- On `SIGINT`/`SIGTERM` it stops the worker, calls `saveDb()` one more time, closes the server, and force-exits after 3 seconds (lines 29–37).
+- Last line of defence (lines 39–68): an `unhandledRejection` is only logged (one stray promise must not take the API down). An `uncaughtException` means the process state is unknown, so it stops the worker, runs `ROLLBACK` (never save a half-finished transaction), saves the committed data and exits with code 1 so a supervisor can restart it.
+- On Vercel, `server.js` is not used: [api/index.mjs](../../api/index.mjs) exports the app, and the platform manages the process.
 
 ### Q: Where is configuration kept?
-**[Basic]** In environment variables loaded from `backend/.env` by [env.js](../../backend/src/config/env.js): `PORT`, `NODE_ENV`, `DB_FILE`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `BCRYPT_ROUNDS`, `UPLOAD_DIR`, `MAX_UPLOAD_MB`, `SETTINGS_SECRET`, `EMAIL_WORKER`, `PASSWORD_RESET_TTL_MINUTES`, `ALLOWED_ORIGINS`. Each has a safe default for development. In production, a missing or short `JWT_SECRET` stops the server (lines 12–15). E-mail settings are the exception: they are stored in the database (see [07-email-system.md](07-email-system.md)).
+**[Basic]** In **one** file for the whole repository: the root `.env` (template `.env.example`), loaded by [env.js](../../backend/src/config/env.js) from `ROOT_DIR`: `PORT`, `NODE_ENV`, `DB_FILE`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `BCRYPT_ROUNDS`, `UPLOAD_DIR`, `MAX_UPLOAD_MB`, `SETTINGS_SECRET`, `EMAIL_WORKER`, `PASSWORD_RESET_TTL_MINUTES`, `DEMO_MODE`, `DEMO_ALLOW_UPLOADS`, `TRUST_PROXY`, `ALLOWED_ORIGINS`, plus `VITE_*` keys for the frontend. Variables already set in the environment win (that is how Vercel and the tests configure the app). Each has a safe default for development. In production, a missing or short `JWT_SECRET` stops the server unless demo mode is on (lines 31–37). `NODE_ENV` must **not** go into `.env`: Vite reads the same file and would bundle React's development build. E-mail settings are the exception: they are stored in the database (see [07-email-system.md](07-email-system.md)).
+
+### Q: How is the repository organised, and why one install?
+**[Basic]** The root [package.json](../../package.json) is an **npm workspace** with two packages, `backend` and `frontend`. One `npm install` installs both into one `node_modules`, with **one** `package-lock.json` (the per-folder lockfiles and per-folder `.env` files were removed). Root scripts delegate with `-w`: `dev` runs both halves with `concurrently`, `check` runs tests + lint + build. Benefits: one command for teammates and examiners, no version drift between two lockfiles, and Vercel can build the whole thing from the repo root. Node.js 20 or newer is required (`engines`).
+
+### Q: How does the same code run on Vercel?
+**[Intermediate]** [vercel.json](../../vercel.json) builds the frontend into `frontend/dist` (served by the CDN) and rewrites `/api/*` to one serverless function, [api/index.mjs](../../api/index.mjs), which just imports the Express app from `backend/src/app.js` and calls `enableOnDemandDelivery()` (no background timers on serverless, so queued e-mail is delivered right after it is queued). Other paths fall back to `index.html` for client-side routing; the sql.js WebAssembly file is bundled with `includeFiles`. Because serverless disks are read-only and instances are short-lived, Vercel runs in **public demo mode**: the database is always in memory and seeded on each cold start, so data is temporary. See [DEPLOYMENT.md](../ai/DEPLOYMENT.md).
 
 ### Q: How does the frontend know which API URL to call?
-**[Basic]** [api.js](../../frontend/src/lib/api.js) uses `import.meta.env.VITE_API_BASE_URL || '/api'`. In development `/api` is proxied by Vite ([vite.config.js](../../frontend/vite.config.js)) to `http://localhost:5000`, so there is no CORS problem. In production the same origin serves both, so `/api` works too.
+**[Basic]** [api.js](../../frontend/src/lib/api.js) uses `import.meta.env.VITE_API_BASE_URL || '/api'`. In development `/api` is proxied by Vite ([vite.config.js](../../frontend/vite.config.js), which reads the root `.env` through `envDir: '..'`) to `http://localhost:5000`, so there is no CORS problem. In single-server production and on Vercel the same origin serves both, so `/api` works too.
 
 ### Q: Is the backend stateless?
-**[Intermediate]** The **HTTP layer** is stateless: no server sessions; every request carries a JWT. But the **process** holds state: the in-memory database, the exclusive queue, and the mail worker timer. That is why you can't just run two copies of the server on the same `.db` file (see [10-hard-and-cross-questions.md](10-hard-and-cross-questions.md)).
+**[Intermediate]** The **HTTP layer** is stateless: no server sessions; every request carries a JWT. But the **process** holds state: the in-memory database, the exclusive queue, and the mail worker timer. That is why you can't just run two copies of the server on the same `.db` file (see [10-hard-and-cross-questions.md](10-hard-and-cross-questions.md)). On Vercel the same fact shows up differently: two warm instances each have their own in-memory demo database.
 
 ### Q: How would you add a new feature, for example "task tags"?
 **[Intermediate]**
-1. Add migration 5 in [schema.js](../../backend/src/config/schema.js) (`tags`, `task_tags` tables). Never edit old migrations.
+1. Add migration 6 in [schema.js](../../backend/src/config/schema.js) (`tags`, `task_tags` tables). Never edit old migrations.
 2. Add `tagRepository.js` with parameterised SQL and the `ex` parameter.
 3. Add Zod schemas in [schemas.js](../../backend/src/validators/schemas.js).
 4. Add controller + routes with `authenticate`/`requireAdmin`.

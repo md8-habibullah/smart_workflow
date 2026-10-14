@@ -14,14 +14,22 @@ export const notifyMany = async (userIds, title, message, type, ex = defaultExec
   }
 };
 
-export const listForUser = (userId, { unreadOnly = false, limit = 50 } = {}, ex = defaultExecutor) =>
+export const listForUser = (userId, { unreadOnly = false, limit = 50, offset = 0 } = {}, ex = defaultExecutor) =>
   ex.query(
     `SELECT * FROM notifications
      WHERE user_id = ? ${unreadOnly ? 'AND is_read = 0' : ''}
      ORDER BY created_at DESC, id DESC
-     LIMIT ?`,
-    [userId, limit]
+     LIMIT ? OFFSET ?`,
+    [userId, limit, offset]
   );
+
+export const countForUser = async (userId, { unreadOnly = false } = {}, ex = defaultExecutor) => {
+  const row = await ex.queryOne(
+    `SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? ${unreadOnly ? 'AND is_read = 0' : ''}`,
+    [userId]
+  );
+  return Number(row.c);
+};
 
 export const countUnread = async (userId, ex = defaultExecutor) => {
   const row = await ex.queryOne('SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0', [userId]);

@@ -135,7 +135,7 @@ export const retry = (id, ex = defaultExecutor) =>
 
 export const getById = (id, ex = defaultExecutor) => ex.queryOne('SELECT * FROM email_outbox WHERE id = ?', [id]);
 
-export const listOutbox = ({ status, search, limit = 50, offset = 0 } = {}, ex = defaultExecutor) => {
+const outboxWhere = ({ status, search } = {}) => {
   const where = [];
   const params = [];
   if (status) {
@@ -146,12 +146,23 @@ export const listOutbox = ({ status, search, limit = 50, offset = 0 } = {}, ex =
     where.push('(to_email LIKE ? OR subject LIKE ?)');
     params.push(`%${search}%`, `%${search}%`);
   }
+  return { where: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+};
+
+export const listOutbox = ({ status, search, limit = 50, offset = 0 } = {}, ex = defaultExecutor) => {
+  const { where, params } = outboxWhere({ status, search });
   return ex.query(
     `SELECT id, user_id, to_email, subject, event_type, status, attempts, last_error, transport, created_at, sent_at, next_attempt_at
-     FROM email_outbox ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+     FROM email_outbox ${where}
      ORDER BY id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
+};
+
+export const countOutbox = async (filters = {}, ex = defaultExecutor) => {
+  const { where, params } = outboxWhere(filters);
+  const row = await ex.queryOne(`SELECT COUNT(*) AS c FROM email_outbox ${where}`, params);
+  return Number(row.c);
 };
 
 export const countByStatus = async (ex = defaultExecutor) => {

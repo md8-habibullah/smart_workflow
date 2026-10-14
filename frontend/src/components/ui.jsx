@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import clsx from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { AlertTriangle, ArrowLeft, Inbox, Loader2, RefreshCw, Search, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronDown, FileQuestion, Inbox, Loader2, Lock, RefreshCw, Search, WifiOff, X } from 'lucide-react'
 import { initials } from '../lib/format'
 
 /** clsx + tailwind-merge: later classes (e.g. a className override) win over defaults. */
@@ -433,17 +433,80 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, cla
   )
 }
 
+/** Title + icon for an API failure, by HTTP status (0 = no response at all). */
+const errorLook = (status) => {
+  if (status === 403) return { icon: Lock, title: "You don't have access to this", tone: 'bg-amber-50 text-amber-600', retry: false }
+  if (status === 404) return { icon: FileQuestion, title: 'Not found', tone: 'bg-slate-100 text-slate-500', retry: false }
+  if (status === 0 || status >= 502) return { icon: WifiOff, title: "Can't reach the server", tone: 'bg-slate-100 text-slate-500', retry: true }
+  return { icon: AlertTriangle, title: 'Something went wrong', tone: 'bg-red-50 text-red-500', retry: true }
+}
+
 export function ErrorState({ error, onRetry, className }) {
+  const look = errorLook(error?.status)
   return (
-    <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
-      <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-        <AlertTriangle className="size-6" />
+    <div role="alert" className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
+      <div className={cn('mb-4 flex size-12 items-center justify-center rounded-2xl', look.tone)}>
+        <look.icon className="size-6" />
       </div>
-      <h3 className="text-sm font-semibold text-slate-900">Something went wrong</h3>
+      <h3 className="text-sm font-semibold text-slate-900">{look.title}</h3>
       <p className="mt-1 max-w-md text-sm text-slate-500">{error?.message || 'Unexpected error.'}</p>
-      {onRetry && (
+      {onRetry && look.retry && (
         <Button variant="secondary" size="sm" icon={RefreshCw} className="mt-5" onClick={onRetry}>
           Try again
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Footer for an infinite list (a usePagedQuery result): loads the next page
+ * automatically when it scrolls into view, with a "Load more" button as the
+ * keyboard/screen-reader friendly fallback and a quiet loading row.
+ */
+export function LoadMore({ query, noun = 'items', className }) {
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, items, total } = query
+  const sentinelRef = useRef(null)
+  const pages = query.data?.pages.length ?? 0
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    // Stop auto-loading after a failed page so a broken server isn't hammered; the button retries.
+    if (!el || !hasNextPage || isFetchingNextPage || isFetchNextPageError || typeof IntersectionObserver === 'undefined') return undefined
+    const observer = new IntersectionObserver((entries) => entries[0]?.isIntersecting && fetchNextPage(), { rootMargin: '320px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage])
+
+  if (!hasNextPage && pages <= 1) return null
+
+  return (
+    <div ref={sentinelRef} className={cn('flex flex-col items-center gap-2 py-4 text-sm', className)}>
+      <p role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-slate-500">
+        {isFetchingNextPage ? (
+          <>
+            <Spinner className="size-4" /> Loading more {noun}…
+          </>
+        ) : isFetchNextPageError ? (
+          <span className="text-red-600">Couldn&apos;t load more {noun}.</span>
+        ) : hasNextPage ? (
+          <span className="tabular-nums">
+            Showing {items.length} of {total} {noun}
+          </span>
+        ) : (
+          <span className="tabular-nums">
+            All {items.length} {noun} loaded
+          </span>
+        )}
+      </p>
+      {hasNextPage && !isFetchingNextPage && (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={isFetchNextPageError ? RefreshCw : ChevronDown}
+          onClick={() => fetchNextPage()}
+        >
+          {isFetchNextPageError ? 'Try again' : 'Load more'}
         </Button>
       )}
     </div>

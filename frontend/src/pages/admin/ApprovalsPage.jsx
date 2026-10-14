@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Building2, Check, KeyRound, Mail, Phone, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { adminApi } from '../../lib/endpoints'
 import { timeAgo } from '../../lib/format'
 import { useDebounced } from '../../lib/useDebounced'
-import { Avatar, Badge, Button, Card, EmptyState, Field, FormError, Modal, PageHeader, QueryView, SearchInput, Select, Tabs, Textarea } from '../../components/ui'
+import { usePagedQuery } from '../../lib/usePagedQuery'
+import { Avatar, Badge, Button, Card, EmptyState, Field, FormError, LoadMore, Modal, PageHeader, QueryView, SearchInput, Select, Tabs, Textarea } from '../../components/ui'
 import { ApprovalBadge, RoleBadge } from '../../components/badges'
 import CreateUserModal from './CreateUserModal'
 import RoleSelect from './RoleSelect'
@@ -117,7 +118,11 @@ function AllUsers() {
   const [resetting, setResetting] = useState(null)
   const debounced = useDebounced(search)
   const params = { search: debounced || undefined, status: status || undefined, role: role || undefined }
-  const query = useQuery({ queryKey: ['users', 'all', params], queryFn: () => adminApi.users(params), placeholderData: keepPreviousData })
+  const query = usePagedQuery({
+    queryKey: ['users', 'all', params],
+    fetchPage: (page) => adminApi.usersPage({ ...params, ...page }),
+    pageSize: 25,
+  })
 
   const toggle = useMutation({
     mutationFn: (u) => adminApi.setActive(u.id, !u.is_active),
@@ -146,81 +151,84 @@ function AllUsers() {
         </Select>
       </div>
       <QueryView query={query}>
-        {(users) =>
-          users.length === 0 ? (
+        {() =>
+          query.items.length === 0 ? (
             <Card>
               <EmptyState icon={Users} title="No users match" />
             </Card>
           ) : (
-            <Card padded={false} className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="table-base">
-                  <thead>
-                    <tr>
-                      <th>User</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Department</th>
-                      <th>Joined</th>
-                      <th className="text-right">Access</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {users.map((u) => {
-                      const canManage = u.id !== me?.id && (u.role !== 'SUPER_ADMIN' || isSuperAdmin)
-                      return (
-                        <tr key={u.id}>
-                          <td>
-                            <div className="flex items-center gap-3">
-                              <Avatar name={u.full_name || u.email} src={u.avatar_url} size="sm" className={u.is_active ? '' : 'opacity-50'} />
-                              <div className="min-w-0">
-                                {u.employee_id ? (
-                                  <Link to={`/app/employees/${u.employee_id}`} className="block truncate font-semibold text-slate-900 hover:text-brand-700">
-                                    {u.full_name || u.email}
-                                  </Link>
-                                ) : (
-                                  <p className="truncate font-semibold text-slate-900">{u.email}</p>
-                                )}
-                                <p className="truncate text-xs text-slate-500">{u.email}</p>
+            <>
+              <Card padded={false} className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="table-base">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Department</th>
+                        <th>Joined</th>
+                        <th className="text-right">Access</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {query.items.map((u) => {
+                        const canManage = u.id !== me?.id && (u.role !== 'SUPER_ADMIN' || isSuperAdmin)
+                        return (
+                          <tr key={u.id}>
+                            <td>
+                              <div className="flex items-center gap-3">
+                                <Avatar name={u.full_name || u.email} src={u.avatar_url} size="sm" className={u.is_active ? '' : 'opacity-50'} />
+                                <div className="min-w-0">
+                                  {u.employee_id ? (
+                                    <Link to={`/app/employees/${u.employee_id}`} className="block truncate font-semibold text-slate-900 hover:text-brand-700">
+                                      {u.full_name || u.email}
+                                    </Link>
+                                  ) : (
+                                    <p className="truncate font-semibold text-slate-900">{u.email}</p>
+                                  )}
+                                  <p className="truncate text-xs text-slate-500">{u.email}</p>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td>
-                            {isSuperAdmin && canManage && u.approval_status === 'APPROVED' ? (
-                              <RoleSelect user={u} className="w-36 py-1.5" />
-                            ) : (
-                              <RoleBadge role={u.role} />
-                            )}
-                          </td>
-                          <td>
-                            <div className="flex flex-wrap gap-1.5">
-                              <ApprovalBadge status={u.approval_status} />
-                              {!u.is_active && <Badge tone="red">Inactive</Badge>}
-                            </div>
-                          </td>
-                          <td className="text-slate-600">{u.department_name || '—'}</td>
-                          <td className="whitespace-nowrap text-slate-500">{timeAgo(u.created_at)}</td>
-                          <td className="text-right">
-                            {canManage && (
-                              <div className="flex justify-end gap-1">
-                                {u.approval_status === 'APPROVED' && (
-                                  <Button size="xs" variant="ghost" icon={KeyRound} onClick={() => setResetting(u)}>
-                                    Reset password
+                            </td>
+                            <td>
+                              {isSuperAdmin && canManage && u.approval_status === 'APPROVED' ? (
+                                <RoleSelect user={u} className="w-36 py-1.5" />
+                              ) : (
+                                <RoleBadge role={u.role} />
+                              )}
+                            </td>
+                            <td>
+                              <div className="flex flex-wrap gap-1.5">
+                                <ApprovalBadge status={u.approval_status} />
+                                {!u.is_active && <Badge tone="red">Inactive</Badge>}
+                              </div>
+                            </td>
+                            <td className="text-slate-600">{u.department_name || '—'}</td>
+                            <td className="whitespace-nowrap text-slate-500">{timeAgo(u.created_at)}</td>
+                            <td className="text-right">
+                              {canManage && (
+                                <div className="flex justify-end gap-1">
+                                  {u.approval_status === 'APPROVED' && (
+                                    <Button size="xs" variant="ghost" icon={KeyRound} onClick={() => setResetting(u)}>
+                                      Reset password
+                                    </Button>
+                                  )}
+                                  <Button size="xs" variant={u.is_active ? 'danger-ghost' : 'secondary'} onClick={() => toggle.mutate(u)}>
+                                    {u.is_active ? 'Deactivate' : 'Activate'}
                                   </Button>
-                                )}
-                                <Button size="xs" variant={u.is_active ? 'danger-ghost' : 'secondary'} onClick={() => toggle.mutate(u)}>
-                                  {u.is_active ? 'Deactivate' : 'Activate'}
-                                </Button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              <LoadMore query={query} noun="users" />
+            </>
           )
         }
       </QueryView>

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { toSqlDate, toSqlDateTime } from '../utils/dates.js';
+import { pageFields } from '../utils/pagination.js';
+
+export { pageQuery } from '../utils/pagination.js';
 
 /*
  * Request body / query schemas. Numeric fields use coercion so that clients
@@ -150,7 +153,8 @@ export const employeeListQuery = z.object({
   departmentId: optionalId('Department'),
   search: z.string().trim().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'ALL']).optional().default('ALL'),
-  role: z.enum(ROLES).optional()
+  role: z.enum(ROLES).optional(),
+  ...pageFields
 });
 
 // ---------------------------------------------------------------- projects
@@ -217,12 +221,18 @@ export const taskListQuery = z.object({
   unassigned: z
     .enum(['true', 'false'])
     .optional()
-    .transform((v) => v === 'true')
+    .transform((v) => v === 'true'),
+  ...pageFields
 });
 
 export const statusChangeSchema = z.object({
   status: z.enum(TASK_STATUSES),
   note: z.string().trim().max(500).optional()
+});
+
+export const autoAllocateSchema = z.object({
+  taskIds: z.array(z.coerce.number().int().positive()).max(500).optional(),
+  dryRun: z.boolean().optional().default(false)
 });
 
 export const assignSchema = z.object({
@@ -255,7 +265,8 @@ export const notificationQuery = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
-  limit: z.coerce.number().int().positive().max(200).optional().default(50)
+  limit: z.coerce.number().int().positive().max(200).optional().default(50),
+  offset: pageFields.offset
 });
 
 // ---- e-mail settings & password recovery

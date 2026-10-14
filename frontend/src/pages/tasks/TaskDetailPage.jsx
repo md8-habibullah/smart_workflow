@@ -32,10 +32,12 @@ import {
   Card,
   CardHeader,
   EmptyState,
+  ErrorState,
   Field,
   FormError,
   IconButton,
   Input,
+  LoadMore,
   Modal,
   PageHeader,
   ProgressBar,
@@ -49,6 +51,8 @@ import {
 import { Deadline, PriorityBadge, ProficiencyBadge, StatusBadge } from '../../components/badges'
 import TaskFormModal from '../../components/TaskFormModal'
 import TaskAttachments from '../../components/TaskAttachments'
+import { MAGIC_TITLE, MagicIcon, MagicIconSolid, magicButtonClass, magicChipClass } from '../../components/MagicBadge'
+import { usePagedQuery } from '../../lib/usePagedQuery'
 
 const TRANSITION_STYLE = {
   IN_PROGRESS: { icon: Play, variant: 'primary' },
@@ -240,7 +244,12 @@ function TaskDetail({ task }) {
             )}
             {isAdmin && !done && (
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button icon={Target} to={`/app/tasks/${task.id}/allocate`} size="sm">
+                <Button
+                  icon={task.assigned_employee_id ? Target : MagicIconSolid}
+                  className={task.assigned_employee_id ? undefined : magicButtonClass}
+                  to={`/app/tasks/${task.id}/allocate`}
+                  size="sm"
+                >
                   {task.assigned_employee_id ? 'Reassign' : 'Find best match'}
                 </Button>
                 {task.assigned_employee_id && (
@@ -568,7 +577,6 @@ function WorkLogs({ task, canLog, onChange }) {
 const HISTORY_ICONS = {
   CREATED: FilePlus,
   ASSIGNED: UserCheck,
-  AUTO_ASSIGNED: UserCheck,
   REASSIGNED: RotateCcw,
   UNASSIGNED: UserMinus,
   STATUS_CHANGED: Eye,
@@ -579,7 +587,11 @@ const HISTORY_ICONS = {
 }
 
 function TaskHistory({ taskId }) {
-  const history = useQuery({ queryKey: ['task-history', taskId], queryFn: () => tasksApi.history(taskId) })
+  const history = usePagedQuery({
+    queryKey: ['task-history', taskId, 'page'],
+    fetchPage: (page) => tasksApi.historyPage(taskId, page),
+    pageSize: 20,
+  })
   if (history.isPending) {
     return (
       <div className="flex justify-center py-6">
@@ -587,25 +599,37 @@ function TaskHistory({ taskId }) {
       </div>
     )
   }
-  if (!history.data?.length) return <EmptyState icon={History} title="No history" className="py-6" />
+  if (history.isError) return <ErrorState error={history.error} onRetry={() => history.refetch()} className="py-6" />
+  if (!history.items.length) return <EmptyState icon={History} title="No history" className="py-6" />
   return (
-    <ol className="relative ml-3 border-l border-slate-200">
-      {history.data.map((h) => {
-        const Icon = HISTORY_ICONS[h.action] || History
-        return (
-          <li key={h.id} className="mb-5 ml-6 last:mb-0">
-            <span className="absolute -left-3 flex size-6 items-center justify-center rounded-full bg-white ring-4 ring-white">
-              <span className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                <Icon className="size-3.5" />
+    <>
+      <ol className="relative ml-3 border-l border-slate-200">
+        {history.items.map((h) => {
+          const auto = h.action === 'AUTO_ASSIGNED'
+          const Icon = auto ? MagicIcon : HISTORY_ICONS[h.action] || History
+          return (
+            <li key={h.id} className="mb-5 ml-6 last:mb-0">
+              <span className="absolute -left-3 flex size-6 items-center justify-center rounded-full bg-white ring-4 ring-white">
+                <span
+                  title={auto ? MAGIC_TITLE : undefined}
+                  className={cn('flex size-6 items-center justify-center rounded-full', auto ? magicChipClass : 'bg-slate-100 text-slate-500')}
+                >
+                  <Icon className="size-3.5" />
+                </span>
               </span>
-            </span>
-            <p className="text-sm text-slate-800">{h.details || h.action}</p>
-            <p className="text-xs text-slate-500">
-              {h.actor_name || h.actor_email} · {timeAgo(h.created_at)}
-            </p>
-          </li>
-        )
-      })}
-    </ol>
+              <p className="text-sm text-slate-800">
+                {h.details || h.action}
+                {auto && <span className="sr-only"> ({MAGIC_TITLE})</span>}
+              </p>
+              <p className="text-xs text-slate-500">
+                {h.actor_name || h.actor_email} · {timeAgo(h.created_at)}
+                {auto && ' · automatic'}
+              </p>
+            </li>
+          )
+        })}
+      </ol>
+      <LoadMore query={history} noun="events" />
+    </>
   )
 }

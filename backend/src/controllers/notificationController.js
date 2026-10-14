@@ -1,14 +1,17 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { notFound, parseId } from '../utils/errors.js';
+import { setTotalCount } from '../utils/pagination.js';
 import * as notificationRepository from '../repositories/notificationRepository.js';
 import { notificationQuery } from '../validators/schemas.js';
 
 export const listNotifications = asyncHandler(async (req, res) => {
   const options = notificationQuery.parse(req.query);
-  const [items, unreadCount] = await Promise.all([
+  const [items, unreadCount, total] = await Promise.all([
     notificationRepository.listForUser(req.user.id, options),
-    notificationRepository.countUnread(req.user.id)
+    notificationRepository.countUnread(req.user.id),
+    notificationRepository.countForUser(req.user.id, options)
   ]);
+  setTotalCount(res, total);
   res.status(200).json({ success: true, data: { items, unreadCount } });
 });
 

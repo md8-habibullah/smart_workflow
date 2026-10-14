@@ -61,11 +61,11 @@ if (account.password_changed_at && decoded.iat < Date.parse(`${account.password_
 ### Q: What happens if `JWT_SECRET` changes?
 **[Hard]**
 1. Every existing token fails `jwt.verify` → everyone gets 401 and must log in again (the frontend's 401 handler logs them out cleanly).
-2. If `SETTINGS_SECRET` is not set, it defaults to `JWT_SECRET` ([env.js](../../backend/src/config/env.js) line 29), so the key that encrypts the **SMTP password** also changes. The stored password can't be decrypted any more; the settings page shows `passwordReadable: false` and the super admin must re-enter it.
+2. If `SETTINGS_SECRET` is not set, it defaults to `JWT_SECRET` ([env.js](../../backend/src/config/env.js) line 55), so the key that encrypts the **SMTP password** also changes. The stored password can't be decrypted any more; the settings page shows `passwordReadable: false` and the super admin must re-enter it.
 Rotating `JWT_SECRET` is therefore a way to log out everyone, but set `SETTINGS_SECRET` separately to avoid the side effect.
 
 ### Q: What protects `JWT_SECRET` in production?
-**[Intermediate]** [env.js](../../backend/src/config/env.js) lines 12–15: with `NODE_ENV=production`, the server **refuses to start** if `JWT_SECRET` is missing or shorter than 32 characters. In development there is a fallback secret. **Honest problem:** `backend/.env` is committed to the repository, so the development secret is public. That is acceptable for a demo but must never happen in production (use a secret manager or untracked `.env`).
+**[Intermediate]** [env.js](../../backend/src/config/env.js) lines 31–37: with `NODE_ENV=production`, the server **refuses to start** if `JWT_SECRET` is missing or shorter than 32 characters. In development there is a fallback secret. The one exception is **public demo mode** (default on Vercel): there it falls back to a fixed demo secret and logs a warning, because the demo accounts and passwords are public anyway and a stable secret keeps sessions valid across serverless instances. The config file is now one root `.env`, which is **git-ignored**; only `.env.example` is tracked. **Honest note:** an older `backend/.env` with a development secret is still in the git history, so that value must never be reused in production.
 
 ### Q: Why are tokens valid for 24 hours, and is there a refresh token?
 **[Intermediate]** 24 h means a user logs in once per working day. There is **no refresh token**. Because the account is re-checked on every request, a long-ish lifetime is less risky (we can still block a user). A production design would use short access tokens (15 min) + a rotating refresh token in an httpOnly cookie.
@@ -90,7 +90,7 @@ Rotating `JWT_SECRET` is therefore a way to log out everyone, but set `SETTINGS_
 **[Hard]** In an earlier version, `changeRole` only protected **super-admin targets**: a regular ADMIN could not edit a super admin, but **could promote any employee — or another admin — to SUPER_ADMIN**. Two admins could even promote each other. Fix ([adminController.js](../../backend/src/controllers/adminController.js) lines 90–120): role changes are **super-admin only**, nobody can change their own role, the account must be approved, and the last active super admin cannot be demoted. Tests: "does not let a regular admin change anyone's role (no self-made super admins)" and "never lets a super admin change their own role" in [uploads.test.js](../../backend/tests/uploads.test.js). Listed in [AUDIT_REPORT.md](../ai/AUDIT_REPORT.md) "Follow-up fixes".
 
 ### Q: How do you protect the last super admin?
-**[Intermediate]** `countActiveSuperAdmins()` counts super admins that are active and approved. Demoting (`changeRole`, line 98) or deactivating (`setActive`, line 127) a super admin is refused with 409 "At least one active super admin must remain" if the count is ≤ 1. Combined with "you can't manage yourself", the system can never lose its last super admin through the API. (Limitation: the count is not inside the same transaction as the update, see [03-database.md](03-database.md).)
+**[Intermediate]** `countActiveSuperAdmins()` counts super admins that are active and approved. Demoting (`changeRole`) or deactivating (`setActive`) a super admin is refused with 409 "At least one active super admin must remain" if the count is ≤ 1 ([adminController.js](../../backend/src/controllers/adminController.js) lines 111 and 139). Combined with "you can't manage yourself", the system can never lose its last super admin through the API. The count runs **inside the same `withTransaction`** as the update, so two super admins demoting each other at the same moment are serialised and the second gets 409 (this race was found in review and fixed).
 
 ### Q: What can an ADMIN not do that a SUPER_ADMIN can?
 **[Basic]** Change roles; create ADMIN/SUPER_ADMIN accounts; activate/deactivate/reset password of a super admin; configure e-mail settings and see the outbox.
@@ -146,19 +146,22 @@ So `..%2F..%2F.env` → 404 (tested: "refuses path tricks on the public avatar r
 ## Other protections
 
 ### Q: What rate limiting do you have?
-**[Basic]** [rateLimiters.js](../../backend/src/middleware/rateLimiters.js) (express-rate-limit, per IP): login, register, forgot-password and reset-password are limited to **50 requests per 15 minutes**; the whole `/api` is limited to **600 per minute**. Disabled in tests. Limitation: counters are in memory (reset on restart, not shared between servers).
+**[Basic]** [rateLimiters.js](../../backend/src/middleware/rateLimiters.js) (express-rate-limit, per IP): login, register, forgot-password and reset-password are limited to **50 requests per 15 minutes**; the whole `/api` is limited to **600 per minute**. Disabled in tests. Behind a proxy (Vercel, or `TRUST_PROXY=true`) the app sets `trust proxy`, so the limit uses the real client IP from `X-Forwarded-For` instead of the proxy's IP ([app.js](../../backend/src/app.js) line 34). Limitation: counters are in memory (reset on restart, not shared between servers or serverless instances).
 
 ### Q: What does Helmet do?
-**[Basic]** `app.use(helmet())` ([app.js](../../backend/src/app.js) line 28) sets HTTP security headers: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options`/frame-ancestors (anti-clickjacking), `Strict-Transport-Security`, `Referrer-Policy`, and more. We also disable `X-Powered-By` so attackers don't see "Express".
+**[Basic]** `app.use(helmet())` ([app.js](../../backend/src/app.js) line 35) sets HTTP security headers: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options`/frame-ancestors (anti-clickjacking), `Strict-Transport-Security`, `Referrer-Policy`, and more. We also disable `X-Powered-By` so attackers don't see "Express".
 
 ### Q: How is CORS configured?
-**[Intermediate]** [app.js](../../backend/src/app.js) lines 31–41: in development any origin is accepted (Vite may use different ports); in **production** only origins in `ALLOWED_ORIGINS` are allowed. Requests without an `Origin` header (same-origin, curl) are allowed. In normal use the frontend is same-origin (Vite proxy or Express serving `dist`), so CORS is rarely needed.
+**[Intermediate]** [app.js](../../backend/src/app.js) lines 42–54: in development any origin is accepted (Vite may use different ports); in **production** only origins in `ALLOWED_ORIGINS` are allowed. Requests without an `Origin` header (same-origin, curl) are allowed. In normal use the frontend is same-origin (Vite proxy or Express serving `dist`), so CORS is rarely needed.
 
 ### Q: What other input limits exist?
-**[Basic]** JSON body max **100 KB** (line 43); Zod limits on every string (titles 200, comments 2000, notes 500…), numbers (estimated hours ≤ 1000, capacity ≤ 24), arrays (≤ 20 required skills); ids must be positive integers (`parseId`) → 400 instead of a crash.
+**[Basic]** JSON body max **100 KB** (app.js line 56); Zod limits on every string (titles 200, comments 2000, notes 500…), numbers (estimated hours ≤ 1000, capacity ≤ 24), arrays (≤ 20 required skills); ids must be positive integers (`parseId`) → 400 instead of a crash.
 
 ### Q: Do error messages leak internal details?
-**[Basic]** No. Unknown errors return "Internal server error occurred." with status 500; the stack trace is only printed in the server console ([errorHandler.js](../../backend/src/middleware/errorHandler.js) line 62). SQLite constraint errors are translated into neutral messages.
+**[Basic]** No. Unknown errors return "Internal server error occurred." with status 500 and a short random **`reference`** id; the full error is logged on the server as `[Unhandled Error <reference>]`, so a user can quote the id and the developer can find the log line ([errorHandler.js](../../backend/src/middleware/errorHandler.js) lines 97–105). The stack trace is added to the response **only when `NODE_ENV=development`**; in production and tests it is never sent (tested in [errors.test.js](../../backend/tests/errors.test.js)). SQLite constraint errors are translated into neutral messages (409/400), and malformed JSON, oversized bodies and bad charsets get 400/413/415 instead of a 500.
+
+### Q: Why does a wrong HTTP method return 405 and not 404?
+**[Intermediate]** [notFoundHandler.js](../../backend/src/middleware/notFoundHandler.js) walks the Express router stack for the requested path. If some route matches the path but not the method, the API answers **405 Method Not Allowed** with an `Allow` header listing the valid methods (as HTTP specifies); otherwise a JSON 404. It helps client developers tell "wrong verb" from "typo in the URL". The walk only runs for requests that matched nothing, so it costs nothing on normal traffic. The `Allow` header is CORS-exposed.
 
 ---
 
@@ -173,7 +176,7 @@ So `..%2F..%2F.env` → 404 (tested: "refuses path tricks on the public avatar r
 - The API never returns the password; only `hasPassword` and `passwordReadable` ([emailSettingsController.js](../../backend/src/controllers/emailSettingsController.js) line 19).
 
 ### Q: If I copy the `.db` file, can I read the SMTP password?
-**[Hard]** Not from the file alone: it holds only ciphertext; you also need `SETTINGS_SECRET` (or `JWT_SECRET`), which lives in the environment, not the database. **But** in this repository `backend/.env` (with `JWT_SECRET`) is committed to git, and `SETTINGS_SECRET` falls back to it — so someone with the repo **and** the DB could decrypt it. For production: keep `.env` out of git, set a separate random `SETTINGS_SECRET`, and ideally use a secret manager. Also, the DB copy would expose bcrypt password **hashes** (slow to crack, but still sensitive).
+**[Hard]** Not from the file alone: it holds only ciphertext; you also need `SETTINGS_SECRET` (or `JWT_SECRET`), which lives in the environment, not the database. **But** `SETTINGS_SECRET` falls back to `JWT_SECRET`, and an old development `JWT_SECRET` is in the git history (from the former `backend/.env`), so someone with the repo **and** a DB encrypted with that secret could decrypt it. The current root `.env` is git-ignored. For production: a fresh, separate random `SETTINGS_SECRET`, and ideally a secret manager. Also, the DB copy would expose bcrypt password **hashes** (slow to crack, but still sensitive).
 
 ### Q: Why encryption for the SMTP password but hashing for user passwords?
 **[Intermediate]** We **never need** a user's password back — we only check it — so a one-way hash is best. The SMTP password must be **sent to the mail server**, so we need the original value back → reversible encryption.
@@ -225,17 +228,31 @@ Code: [authService.js](../../backend/src/services/authService.js) lines 164–20
 
 ---
 
+## Public demo mode
+
+### Q: The Vercel demo lets anyone sign in as admin. How do you stop visitors from locking each other out?
+**[Hard]** Demo mode (`isDemoMode()` in [env.js](../../backend/src/config/env.js), default on Vercel) adds guards in [utils/demo.js](../../backend/src/utils/demo.js). For the built-in accounts (e-mail ending `@smartworkflow.org`) the API refuses with **403** "Public demo: …": changing the password (self or by an admin), changing the role, deactivating, editing the profile; and forgot-password never issues reset links for them (anyone could read the outbox). Accounts that visitors register themselves are fully manageable. Everything else (tasks, allocation, approvals) works normally, and the in-memory database is reseeded on every cold start, so damage is temporary. Tested in [demo.test.js](../../backend/tests/demo.test.js).
+
+### Q: What else is switched off in demo mode, and why?
+**[Intermediate]**
+- **SMTP** is refused (403) when saving settings or sending a test; the transport is forced to LOG, so a public site can never be used to send real e-mail.
+- **Uploads** are off unless `DEMO_ALLOW_UPLOADS=true`. `requireUploadsEnabled` runs **before** multer, so a refused file is never written to disk. A public upload box invites abuse, and Vercel's disk is temporary anyway.
+- **JWT fallback secret** is allowed only in demo mode.
+- `GET /api/auth/options` reports `demoMode` and `uploadsEnabled`, so the UI can show a "Public demo" notice and hide or disable upload controls.
+
+---
+
 ## OWASP Top 10 (2021) mapping
 
 | OWASP risk | How this project addresses it | Remaining gap |
 | --- | --- | --- |
 | A01 Broken Access Control | `requireAdmin`/`requireSuperAdmin`, object-level checks, server-side employee scoping, last-super-admin rule, privilege-escalation fix, 18 RBAC tests | — |
-| A02 Cryptographic Failures | bcrypt passwords, AES-256-GCM SMTP secret, SHA-256 reset tokens, JWT HMAC | No HTTPS config in the app (needs a reverse proxy); `.env` committed |
+| A02 Cryptographic Failures | bcrypt passwords, AES-256-GCM SMTP secret, SHA-256 reset tokens, JWT HMAC | No HTTPS config in the app (needs a reverse proxy or Vercel); an old dev secret remains in git history |
 | A03 Injection | Parameterised SQL, allow-listed columns, Zod validation, HTML escaping in e-mails | — |
-| A04 Insecure Design | State machine, transactions, outbox, eligibility rules, single-use tokens | Self-declared skills not verified |
-| A05 Security Misconfiguration | Helmet, `x-powered-by` off, strict CORS in production, production refuses weak JWT secret | Dev defaults in committed `.env` |
+| A04 Insecure Design | State machine, transactions, outbox, eligibility rules, single-use tokens, demo-mode lock-down of public accounts | Self-declared skills not verified |
+| A05 Security Misconfiguration | Helmet, `x-powered-by` off, strict CORS in production, production refuses weak JWT secret (outside demo mode), no stack traces outside development, `.env` git-ignored | Dev defaults if `.env` is not set |
 | A06 Vulnerable Components | Maintained packages (Express 4, multer 2, nodemailer) | No automated `npm audit` in CI |
 | A07 Identification & Auth Failures | Rate limits, timing-safe login, account re-check per request, revocation on password change | Short min password length, no 2FA |
 | A08 Software & Data Integrity | Migrations versioned and backed up; GCM tag detects tampering | No signed audit log |
-| A09 Logging & Monitoring | `task_history` audit trail, outbox log, server error log | No central logging / alerts |
+| A09 Logging & Monitoring | `task_history` audit trail, outbox log, server error log with `reference` ids | No central logging / alerts |
 | A10 SSRF | No user-supplied URLs are fetched; SMTP host is set only by a super admin | Super admin can point SMTP anywhere (trusted role) |

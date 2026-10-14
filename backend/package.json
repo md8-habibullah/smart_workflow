@@ -22,7 +22,7 @@
     "dev": "node --watch src/server.js",
     "seed": "node src/config/seed.js",
     "db:reset": "node src/config/seed.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test": "node --experimental-vm-modules ../node_modules/jest/bin/jest.js --runInBand",
     "db:migrate": "node src/config/migrate.js",
     "db:status": "node src/config/status.js"
   },
@@ -59,6 +59,6 @@
     ]
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }
