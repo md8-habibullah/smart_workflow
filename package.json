@@ -1,0 +1,18 @@
+{
+  "name": "smart-workforce",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Smart Workforce & Task Allocation System: Express + SQLite API with a React frontend",
+  "scripts": {
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "test": "npm --prefix backend test",
+    "lint": "npm --prefix frontend run lint",
+    "db:reset": "npm --prefix backend run db:reset"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
