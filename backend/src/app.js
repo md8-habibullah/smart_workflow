@@ -16,7 +16,9 @@ import taskRoutes from './routes/taskRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 import { apiRateLimiter } from './middleware/rateLimiters.js';
+import { serveAvatar } from './controllers/attachmentController.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 
@@ -25,7 +27,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
 
-// In development any origin is accepted (Flutter web picks a random localhost port).
+// In development any origin is accepted (Vite may pick another localhost port).
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -53,6 +55,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Profile photos are public but addressed by unguessable random names.
+app.get('/api/files/avatars/:name', serveAvatar);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -63,6 +68,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Serve the built React app (frontend/dist) when it exists, with SPA fallback,
 // so `npm run build` + `npm start` runs the whole system from one port.

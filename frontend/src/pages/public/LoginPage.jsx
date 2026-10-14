@@ -102,6 +102,12 @@ export default function LoginPage() {
           )}
         </Field>
 
+        <div className="-mt-2 flex justify-end">
+          <Link to="/forgot-password" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+            Forgot password?
+          </Link>
+        </div>
+
         <Button type="submit" size="lg" className="w-full" loading={submitting} disabled={!form.email || !form.password}>
           Sign in
         </Button>

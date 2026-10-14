@@ -2,6 +2,8 @@ import express from 'express';
 import * as taskController from '../controllers/taskController.js';
 import * as workLogController from '../controllers/workLogController.js';
 import * as commentController from '../controllers/commentController.js';
+import * as attachmentController from '../controllers/attachmentController.js';
+import { attachmentUpload } from '../middleware/upload.js';
 import { authenticate, requireAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -35,5 +37,11 @@ router.delete('/:id/work-logs/:logId', workLogController.deleteWorkLog);
 router.get('/:id/comments', commentController.getComments);
 router.post('/:id/comments', commentController.createComment);
 router.delete('/:id/comments/:commentId', commentController.deleteComment);
+
+// Attachments (multipart/form-data, field "files", up to 5 per request)
+router.get('/:id/attachments', attachmentController.listAttachments);
+router.post('/:id/attachments', attachmentUpload, attachmentController.uploadAttachments);
+router.get('/:id/attachments/:attachmentId/download', attachmentController.downloadAttachment);
+router.delete('/:id/attachments/:attachmentId', attachmentController.deleteAttachment);
 
 export default router;

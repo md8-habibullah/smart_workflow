@@ -45,7 +45,8 @@ src/
 | Path | Who | Page |
 | --- | --- | --- |
 | `/` | everyone | Landing |
-| `/login`, `/register` | signed-out | Auth pages (demo account quick-fill on login) |
+| `/login`, `/register`, `/forgot-password` | signed-out | Auth pages (demo account quick-fill on login) |
+| `/reset-password?token=…` | everyone | Choose a new password from an e-mailed link |
 | `/app` | signed-in | Dashboard (admin or employee variant) |
 | `/app/tasks`, `/app/tasks/:id` | signed-in | Task list (filters in the URL), task detail with workflow actions, comments, work logs, history |
 | `/app/tasks/:id/allocate` | admin | Ranked candidates, score breakdown, assign / reassign / force / auto-assign |
@@ -55,6 +56,7 @@ src/
 | `/app/approvals` | admin | Pending registrations; all users; create user |
 | `/app/reports` | admin | Five reports with charts and CSV export |
 | `/app/notifications`, `/app/profile` | signed-in | Inbox; personal details, skills, password |
+| `/app/settings/email` | super admin | Global e-mail configuration, test message, outbox with preview/retry |
 
 Admin-only routes redirect employees to `/app`. The API enforces the same rules independently.
 
@@ -74,9 +76,15 @@ The brand colour is defined once as `--color-brand-50 … 950` in `src/index.css
 
 - **Landing page** (`pages/public/LandingPage.jsx`): hero, how-it-works, a product tour with real screenshots, scoring explanation, features, roles, and a demo section.
 - **Demo accounts** (`components/DemoAccounts.jsx`, data in `lib/demo.js`): copyable credentials and one-click sign-in, shown on the landing and login pages.
-- **Kanban board** (`/app/tasks?view=board`): drag a card to another column to change its status. The backend enforces the workflow, so illegal moves show an error toast.
+- **Kanban board** (`pages/tasks/TaskBoard.jsx`, the default task view; `?view=list` or a `?status=` filter shows the list, and the last choice is remembered in localStorage): while dragging, columns the card may move to are highlighted and the others dimmed (the client mirrors the backend `TRANSITIONS`; the server still enforces them). Moves are optimistic and roll back on error. Dropping a pending task on *Assigned* opens smart allocation. Every card also has a **Move to** menu, so touch-screen and keyboard users don't need drag-and-drop. Cancelled tasks are listed under the board.
+- **Resizable sidebar** (`components/layout/useSidebar.js`): drag the sidebar edge (208–400 px), drag far left or press **Ctrl+B** to collapse it to an icon rail, double-click the edge to reset; the edge also takes arrow keys. Width and collapsed state are stored in localStorage (`swta.sidebar`).
+- **E-mail settings** (`pages/settings/EmailSettingsPage.jsx`, super admin): SMTP or LOG transport, provider presets, encrypted password, per-event switches, test with unsaved settings, outbox log with sandboxed HTML preview and retry.
+- **Forgot password** (`pages/public/ForgotPasswordPage.jsx`, `ResetPasswordPage.jsx`); after changing your own password the client stores the fresh token returned by the server.
 - **Quick search** (`components/CommandPalette.jsx`): `Ctrl/⌘ + K` or the header search box. Jump to pages, tasks, projects and (admins) employees with the keyboard.
 - **CSV export** on the task list and every report.
+- **File attachments** (`components/TaskAttachments.jsx`, task page → Files tab): drag-and-drop or click to upload with a progress bar (XHR), image thumbnails and preview, PDF opens in a new tab, download, delete. Files are fetched with the auth token as Blobs (`api.blob`), because a plain `<img src>` can't send it.
+- **Profile photos** (`components/AvatarUploader.jsx` on the Profile page); `<Avatar src>` falls back to initials when there's no photo or it fails to load.
+- **Role management** (`pages/admin/RoleSelect.jsx`, `ResetPasswordModal.jsx`): super admins change roles inline (with confirmation) in Users & Approvals and on employee profiles; admins reset passwords with a generated strong password.
 
 ### Screenshots
 

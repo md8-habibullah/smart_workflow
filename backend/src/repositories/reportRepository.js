@@ -25,6 +25,7 @@ export const getEmployeeWorkloadReport = (ex = defaultExecutor) =>
       e.full_name,
       e.job_position,
       d.name AS department_name,
+      CASE WHEN u.avatar_file IS NOT NULL THEN '/api/files/avatars/' || u.avatar_file END AS avatar_url,
       e.daily_capacity_hours,
       e.daily_capacity_hours * 5 AS weekly_capacity_hours,
       COALESCE(l.active_tasks, 0) AS active_tasks,

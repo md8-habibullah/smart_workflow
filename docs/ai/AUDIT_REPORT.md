@@ -39,8 +39,14 @@ The Flutter client was mostly a static mock-up:
 | 19 | Low | `npm run db:reset` used a fragile inline `node -e` with ESM imports. | `node src/config/seed.js` wipes and reseeds. |
 | 20 | Low | Seeded super admin had id `0`. | Ids start at 1. |
 
+## Follow-up fixes
+
+| Severity | Defect | Fix |
+| --- | --- | --- |
+| **High** | A regular ADMIN could promote any user to SUPER_ADMIN: `changeRole` only protected super-admin *targets*. | Role changes are super-admin only; the last active super admin can't be demoted or deactivated. |
+
 ## Verification
 
-- Backend: `npm test`. **72 integration tests** across auth, RBAC, full task lifecycle, allocation scoring, CRUD, reports and notifications, each file on a fresh in-memory database.
+- Backend: `npm test`. **106 integration tests** across auth, RBAC, full task lifecycle, allocation scoring, CRUD, reports, notifications, file uploads, role management, e-mail outbox and password recovery, each file on a fresh in-memory database.
 - Legacy upgrade: a database created by the original code was opened by the new server; migration 2 ran, and demo logins work with the real password.
 - Frontend: production build passes; an automated browser run (Playwright) drives the real UI through login, every page, task creation, smart allocation, employee start/log/comment/submit, admin approval, and the mobile drawer.

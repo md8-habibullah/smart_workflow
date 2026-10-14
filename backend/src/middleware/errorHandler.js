@@ -1,5 +1,6 @@
 import { ZodError } from 'zod';
 import { isTest } from '../config/env.js';
+import { cleanupRequestFiles } from './upload.js';
 
 /** Maps SQLite constraint failures to meaningful HTTP responses. */
 const mapSqliteError = (err) => {
@@ -18,11 +19,26 @@ const mapSqliteError = (err) => {
 
 // eslint-disable-next-line no-unused-vars
 export const errorHandler = (err, req, res, next) => {
+  // Any files written for a failed request are orphans: remove them.
+  cleanupRequestFiles(req);
+
   if (err instanceof ZodError) {
     return res.status(400).json({
       success: false,
       message: err.errors[0]?.message || 'Validation failed for request data',
       errors: err.errors.map((e) => ({ field: e.path.join('.'), message: e.message }))
+    });
+  }
+
+  if (err.name === 'MulterError') {
+    const messages = {
+      LIMIT_FILE_SIZE: 'File is too large.',
+      LIMIT_FILE_COUNT: 'Too many files in one upload (maximum 5).',
+      LIMIT_UNEXPECTED_FILE: 'Unexpected file field in upload.'
+    };
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      success: false,
+      message: messages[err.code] || `Upload failed: ${err.message}`
     });
   }
 

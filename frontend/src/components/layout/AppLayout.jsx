@@ -8,10 +8,13 @@ import {
   Building2,
   CheckCheck,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
   FolderKanban,
   LayoutDashboard,
   ListTodo,
   LogOut,
+  Mail,
   Menu,
   Search,
   Award,
@@ -25,8 +28,9 @@ import { dashboardApi, notificationsApi } from '../../lib/endpoints'
 import { timeAgo } from '../../lib/format'
 import { Avatar, IconButton, Spinner, cn } from '../ui'
 import { RoleBadge } from '../badges'
-import Logo from '../Logo'
+import Logo, { LogoMark } from '../Logo'
 import CommandPalette, { useCommandPalette } from '../CommandPalette'
+import { useSidebar } from './useSidebar'
 
 const ADMIN_NAV = [
   { section: 'Overview' },
@@ -42,6 +46,8 @@ const ADMIN_NAV = [
   { to: '/app/reports', label: 'Reports', icon: BarChart3 },
 ]
 
+const SUPER_ADMIN_NAV = [...ADMIN_NAV, { section: 'System' }, { to: '/app/settings/email', label: 'E-mail settings', icon: Mail }]
+
 const EMPLOYEE_NAV = [
   { section: 'Workspace' },
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -53,9 +59,9 @@ const EMPLOYEE_NAV = [
 
 const Brand = ({ dark }) => <Logo to="/app" dark={dark} />
 
-function Sidebar({ onNavigate }) {
-  const { isAdmin } = useAuth()
-  const nav = isAdmin ? ADMIN_NAV : EMPLOYEE_NAV
+function Sidebar({ onNavigate, collapsed = false, onToggle }) {
+  const { isAdmin, isSuperAdmin } = useAuth()
+  const nav = isSuperAdmin ? SUPER_ADMIN_NAV : isAdmin ? ADMIN_NAV : EMPLOYEE_NAV
   const { data: dashboard } = useQuery({
     queryKey: ['dashboard'],
     queryFn: dashboardApi.get,
@@ -65,48 +71,84 @@ function Sidebar({ onNavigate }) {
 
   return (
     <div className="flex h-full flex-col bg-brand-950">
-      <div className="flex h-16 items-center px-5">
-        <Brand dark />
+      <div className={cn('flex h-16 shrink-0 items-center', collapsed ? 'justify-center' : 'px-5')}>
+        {collapsed ? (
+          <Link to="/app" aria-label="Smart Workforce home">
+            <LogoMark />
+          </Link>
+        ) : (
+          <Brand dark />
+        )}
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 scroll-thin">
+      <nav className={cn('flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto py-4 scroll-thin', collapsed ? 'px-2.5' : 'px-3')}>
         {nav.map((item) =>
           item.section ? (
-            <p key={item.section} className="px-3 pt-5 pb-2 text-[11px] font-semibold tracking-wider text-brand-300/50 uppercase first:pt-0">
-              {item.section}
-            </p>
+            collapsed ? (
+              <div key={item.section} className="mx-2 my-3 h-px bg-white/10 first:mt-0" aria-hidden="true" />
+            ) : (
+              <p key={item.section} className="truncate px-3 pt-5 pb-2 text-[11px] font-semibold tracking-wider text-brand-300/50 uppercase first:pt-0">
+                {item.section}
+              </p>
+            )
           ) : (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
               className={({ isActive }) =>
                 cn(
-                  'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'group relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors',
+                  collapsed ? 'justify-center px-0' : 'px-3',
                   isActive ? 'bg-white/10 text-white ring-1 ring-white/5' : 'text-brand-50/70 hover:bg-white/5 hover:text-white',
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={cn('size-[18px]', isActive ? 'text-brand-300' : 'text-brand-100/50 group-hover:text-brand-100')} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badgeKey && badges[item.badgeKey] > 0 && (
-                    <span className="rounded-full bg-amber-400 px-2 py-0.5 text-amber-950 text-[11px] font-bold tabular-nums">
-                      {badges[item.badgeKey]}
-                    </span>
-                  )}
+                  <item.icon className={cn('size-[18px] shrink-0', isActive ? 'text-brand-300' : 'text-brand-100/50 group-hover:text-brand-100')} />
+                  {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                  {item.badgeKey && badges[item.badgeKey] > 0 &&
+                    (collapsed ? (
+                      <span className="absolute top-1 right-1.5 size-2 rounded-full bg-amber-400 ring-2 ring-brand-950" />
+                    ) : (
+                      <span className="rounded-full bg-amber-400 px-2 py-0.5 text-amber-950 text-[11px] font-bold tabular-nums">
+                        {badges[item.badgeKey]}
+                      </span>
+                    ))}
                 </>
               )}
             </NavLink>
           ),
         )}
       </nav>
-      <div className="border-t border-white/10 p-4">
-        <p className="text-[11px] leading-relaxed text-brand-100/40">
-          Skill-based allocation · workload balancing · deadline-aware scoring
-        </p>
-      </div>
+      {onToggle ? (
+        <div className={cn('border-t border-white/10', collapsed ? 'p-2.5' : 'p-3')}>
+          <button
+            type="button"
+            onClick={onToggle}
+            title={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg py-2 text-sm font-medium text-brand-50/60 transition hover:bg-white/5 hover:text-white',
+              collapsed ? 'justify-center' : 'px-3',
+            )}
+          >
+            {collapsed ? <ChevronsRight className="size-[18px]" /> : <ChevronsLeft className="size-[18px]" />}
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Collapse</span>
+                <kbd className="rounded border border-white/15 px-1.5 text-[10px] text-brand-100/50">Ctrl B</kbd>
+              </>
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className="border-t border-white/10 p-4">
+          <p className="text-[11px] leading-relaxed text-brand-100/40">Skill-based allocation · workload balancing · deadline-aware scoring</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -236,7 +278,7 @@ function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2.5 rounded-full py-1 pr-2 pl-1 transition hover:bg-slate-100"
       >
-        <Avatar name={displayName} size="sm" />
+        <Avatar name={displayName} src={user?.avatarUrl} size="sm" />
         <span className="hidden text-left leading-tight sm:block">
           <span className="block max-w-[160px] truncate text-sm font-semibold text-slate-900">{displayName}</span>
           <span className="block text-xs text-slate-500">{user?.employee?.position || user?.role}</span>
@@ -281,12 +323,29 @@ export default function AppLayout() {
   const mobileOpen = drawerPath === location.pathname
   const [paletteOpen, setPaletteOpen] = useCommandPalette()
   const setMobileOpen = (open) => setDrawerPath(open ? location.pathname : null)
+  const sidebar = useSidebar()
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 lg:block">
-        <Sidebar />
+    <div className="min-h-screen bg-slate-50" style={{ '--sidebar-w': `${sidebar.width}px` }}>
+      {/* Desktop sidebar: resizable, collapsible, remembered in localStorage */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] lg:block',
+          !sidebar.dragging && 'transition-[width] duration-200 ease-out',
+        )}
+      >
+        <Sidebar collapsed={sidebar.collapsed} onToggle={sidebar.toggle} />
+        <div
+          {...sidebar.handleProps}
+          className="group absolute inset-y-0 -right-1.5 z-10 w-3 cursor-col-resize outline-none"
+        >
+          <span
+            className={cn(
+              'absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors',
+              sidebar.dragging ? 'bg-brand-400' : 'bg-transparent group-hover:bg-brand-400/70 group-focus-visible:bg-brand-400',
+            )}
+          />
+        </div>
       </aside>
 
       {/* Mobile drawer */}
@@ -305,7 +364,7 @@ export default function AppLayout() {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className={cn('lg:pl-[var(--sidebar-w)]', !sidebar.dragging && 'transition-[padding] duration-200 ease-out')}>
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur sm:px-6">
           <IconButton icon={Menu} label="Open menu" onClick={() => setMobileOpen(true)} className="lg:hidden" />
           <div className="lg:hidden">

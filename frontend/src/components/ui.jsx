@@ -226,10 +226,21 @@ export function StatCard({ label, value, icon: Icon, tone = 'brand', hint, to })
   return <Card>{body}</Card>
 }
 
-export function Avatar({ name, size = 'md', className }) {
+export function Avatar({ name, src, size = 'md', className }) {
   const palette = ['bg-brand-500', 'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-rose-500', 'bg-amber-500', 'bg-teal-500']
   const hash = [...(name || '?')].reduce((h, c) => h + c.charCodeAt(0), 0)
   const sizes = { xs: 'size-6 text-[10px]', sm: 'size-8 text-xs', md: 'size-10 text-sm', lg: 'size-14 text-lg', xl: 'size-20 text-2xl' }
+  const [failedSrc, setFailedSrc] = useState(null)
+  if (src && failedSrc !== src) {
+    return (
+      <img
+        src={src}
+        alt={name || ''}
+        onError={() => setFailedSrc(src)}
+        className={cn('inline-block shrink-0 rounded-full bg-slate-100 object-cover', sizes[size], className)}
+      />
+    )
+  }
   return (
     <span
       className={cn(

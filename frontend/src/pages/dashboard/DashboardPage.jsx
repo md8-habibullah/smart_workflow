@@ -309,7 +309,7 @@ function AdminDashboard({ data }) {
             <div className="space-y-4">
               {topWorkload.map((w) => (
                 <Link key={w.employee_id} to={`/app/employees/${w.employee_id}`} className="flex items-center gap-3 hover:opacity-80">
-                  <Avatar name={w.full_name} size="sm" />
+                  <Avatar name={w.full_name} src={w.avatar_url} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-semibold text-slate-900">{w.full_name}</p>
@@ -419,7 +419,7 @@ function EmployeeDashboard({ data }) {
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-800 to-brand-950 text-white shadow-sm">
         <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div className="flex items-center gap-4">
-            <Avatar name={displayName} size="lg" className="ring-4 ring-white/15" />
+            <Avatar name={displayName} src={user?.avatarUrl} size="lg" className="ring-4 ring-white/15" />
             <div>
               <p className="text-sm text-brand-100/80">
                 {greeting()} · {todayLabel()}

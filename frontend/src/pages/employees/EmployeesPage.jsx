@@ -78,7 +78,7 @@ export default function EmployeesPage() {
                 className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
               >
                 <div className="flex items-start gap-3">
-                  <Avatar name={e.full_name} className={inactive ? 'opacity-50' : ''} />
+                  <Avatar name={e.full_name} src={e.avatar_url} className={inactive ? 'opacity-50' : ''} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{e.full_name}</p>
                     <p className="truncate text-sm text-slate-500">{e.job_position}</p>

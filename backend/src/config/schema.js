@@ -220,6 +220,88 @@ const migrations = [
     const stmt = db.prepare('UPDATE users SET password_hash = ? WHERE password_hash = ?');
     stmt.run([bcrypt.hashSync('password123', 10), LEGACY_SEED_HASH]);
     stmt.free();
+  },
+
+  // 3 — file uploads: task attachments and profile photos
+  (db) => {
+    const userColumns = db.exec('PRAGMA table_info(users)')[0].values.map((row) => row[1]);
+    if (!userColumns.includes('avatar_file')) {
+      db.exec('ALTER TABLE users ADD COLUMN avatar_file TEXT NULL');
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL,
+        uploaded_by INTEGER NOT NULL,
+        original_name TEXT NOT NULL,
+        stored_name TEXT NOT NULL UNIQUE,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
+        created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_attachments_task ON attachments(task_id);
+    `);
+  },
+
+  // 4 — global e-mail configuration, transactional outbox, password-reset tokens, session revocation
+  (db) => {
+    const userColumns = db.exec('PRAGMA table_info(users)')[0].values.map((row) => row[1]);
+    if (!userColumns.includes('password_changed_at')) {
+      db.exec('ALTER TABLE users ADD COLUMN password_changed_at TEXT NULL');
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS email_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled INTEGER NOT NULL DEFAULT 0,
+        transport TEXT NOT NULL DEFAULT 'LOG' CHECK (transport IN ('SMTP', 'LOG')),
+        smtp_host TEXT NULL,
+        smtp_port INTEGER NOT NULL DEFAULT 587 CHECK (smtp_port BETWEEN 1 AND 65535),
+        smtp_secure INTEGER NOT NULL DEFAULT 0,
+        smtp_user TEXT NULL,
+        smtp_password_enc TEXT NULL,
+        from_name TEXT NOT NULL DEFAULT 'Smart Workforce',
+        from_email TEXT NOT NULL DEFAULT 'no-reply@smartworkflow.org',
+        reply_to TEXT NULL,
+        app_url TEXT NOT NULL DEFAULT 'http://localhost:5173',
+        disabled_events TEXT NOT NULL DEFAULT '[]',
+        updated_by INTEGER NULL,
+        updated_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+        FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+      INSERT OR IGNORE INTO email_settings (id) VALUES (1);
+
+      CREATE TABLE IF NOT EXISTS email_outbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        to_email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        text_body TEXT NOT NULL,
+        html_body TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SENT', 'FAILED')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT NULL,
+        transport TEXT NULL,
+        next_attempt_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+        created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+        sent_at TEXT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_outbox_status_next ON email_outbox(status, next_attempt_at);
+
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at TEXT NULL,
+        created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+    `);
   }
 ];
 

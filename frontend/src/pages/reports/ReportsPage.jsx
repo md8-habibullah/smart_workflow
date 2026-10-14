@@ -93,7 +93,7 @@ function WorkloadReport({ rows }) {
                 <tr key={r.employee_id}>
                   <td>
                     <Link to={`/app/employees/${r.employee_id}`} className="flex items-center gap-2.5 font-semibold text-slate-900 hover:text-brand-700">
-                      <Avatar name={r.full_name} size="xs" /> {r.full_name}
+                      <Avatar name={r.full_name} src={r.avatar_url} size="xs" /> {r.full_name}
                     </Link>
                   </td>
                   <td className="text-slate-600">{r.department_name || '—'}</td>
@@ -264,7 +264,7 @@ function PerformanceReport({ rows }) {
               <tr key={r.employee_id}>
                 <td>
                   <Link to={`/app/employees/${r.employee_id}`} className="flex items-center gap-2.5 font-semibold text-slate-900 hover:text-brand-700">
-                    <Avatar name={r.full_name} size="xs" /> {r.full_name}
+                    <Avatar name={r.full_name} src={r.avatar_url} size="xs" /> {r.full_name}
                   </Link>
                 </td>
                 <td className="text-slate-600">{r.department_name || '—'}</td>

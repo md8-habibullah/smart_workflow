@@ -13,8 +13,14 @@ Access: **Public** · **Auth** (any approved, active account) · **Admin** (`ADM
 | POST | `/auth/login` | Public | `email, password` → `{ token, expiresIn, user }`. 403 with `errors[0].message = PENDING / REJECTED` for unapproved accounts |
 | GET | `/auth/me` (alias `/auth/profile`) | Auth | Session user + employee profile |
 | PATCH | `/auth/profile` | Auth | `fullName?, phoneNumber?` |
-| POST | `/auth/change-password` | Auth | `currentPassword, newPassword, confirmPassword` |
+| POST | `/auth/change-password` | Auth | `currentPassword, newPassword, confirmPassword` → `{ token }`. Every older token is revoked (other devices are signed out); the client stores the new token |
+| GET | `/auth/options` | Public | `{ passwordResetByEmail }` (true when e-mail is enabled) |
+| POST | `/auth/forgot-password` | Public (rate-limited) | `email`. Same answer whether or not the account exists; 503 when e-mail is disabled. E-mails a one-time link valid for `PASSWORD_RESET_TTL_MINUTES` |
+| POST | `/auth/reset-password` | Public (rate-limited) | `token` (64 hex), `newPassword`. Single use; a newer link invalidates older ones; revokes existing sessions |
 | GET | `/departments/public` | Public | `[{id, name}]` for the registration form |
+| POST | `/auth/avatar` | Auth | multipart field `avatar`: PNG/JPG/GIF/WebP ≤ 2 MB; replaces the previous photo |
+| DELETE | `/auth/avatar` | Auth | Removes the profile photo |
+| GET | `/files/avatars/:name` | Public | Serves a profile photo (random 32-hex file name; `avatarUrl` / `avatar_url` fields point here) |
 
 ## Dashboard & notifications
 
@@ -48,6 +54,10 @@ Access: **Public** · **Auth** (any approved, active account) · **Admin** (`ADM
 | GET | `/tasks/:id/comments` | Task access | |
 | POST | `/tasks/:id/comments` | Task access | `content` |
 | DELETE | `/tasks/:id/comments/:commentId` | Admin / author | |
+| GET | `/tasks/:id/attachments` | Task access | File list (name, type, size, uploader) |
+| POST | `/tasks/:id/attachments` | Admin / Assignee | multipart field `files` (≤ 5 files, ≤ `MAX_UPLOAD_MB` each). Allowed: images, PDF, txt/md/csv/json, zip, Word/Excel/PowerPoint. Not on cancelled tasks |
+| GET | `/tasks/:id/attachments/:attachmentId/download?inline=1` | Task access | Streams the file; `inline=1` is honoured only for images and PDF |
+| DELETE | `/tasks/:id/attachments/:attachmentId` | Admin / uploader | The uploader can't delete once the task is completed |
 
 ## Employees & skills
 
@@ -78,17 +88,31 @@ Access: **Public** · **Auth** (any approved, active account) · **Admin** (`ADM
 | GET / POST | `/projects/:id/members` | Admin | `employeeId` |
 | DELETE | `/projects/:id/members/:employeeId` | Admin | |
 
+## System settings (super admin only)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/settings/email` | `{ settings, events, outbox }`. `settings.hasPassword` replaces the password, which is never returned |
+| PUT | `/settings/email` | `enabled, transport (SMTP or LOG), smtpHost, smtpPort, smtpSecure, smtpUser, smtpPassword?, clearPassword?, fromName, fromEmail, replyTo?, appUrl, disabledEvents[]`. An empty `smtpPassword` keeps the stored one |
+| POST | `/settings/email/test` | `to, settings?`. Sends immediately (optionally with unsaved `settings`); 400 with the SMTP error on failure |
+| GET | `/settings/email/outbox?status&search&limit&offset` | Log of queued / sent / failed e-mails with counts |
+| GET | `/settings/email/outbox/:id` | One message including `html_body` (preview) |
+| POST | `/settings/email/outbox/:id/retry` | FAILED → PENDING and deliver now |
+| POST | `/settings/email/outbox/flush` | Deliver everything that is due now |
+| DELETE | `/settings/email/outbox?status=SENT or FAILED` | Clear the log (pending mail is never deleted) |
+
 ## Admin & reports
 
 | Method | Path | Access | Notes |
 | --- | --- | --- | --- |
 | GET | `/admin/registrations?status=PENDING` | Admin | |
-| POST | `/admin/registrations/:userId/approve` | Admin | Notifies the user |
-| POST | `/admin/registrations/:userId/reject` | Admin | `rejectionReason?`; only PENDING |
+| POST | `/admin/registrations/:id/approve` | Admin | Notifies the user |
+| POST | `/admin/registrations/:id/reject` | Admin | `rejectionReason?`; only PENDING |
 | GET | `/admin/users?status&role&search` | Admin | |
 | POST | `/admin/users` | Admin (Super for admin roles) | Creates an approved account + profile |
-| PATCH | `/admin/users/:userId/role` | Admin (Super to touch super admins) | `role` |
-| PATCH | `/admin/users/:userId/status` | Admin | `isActive`; cannot target yourself |
+| PATCH | `/admin/users/:id/role` | **Super** | `role`. Not on yourself or unapproved accounts; the last active super admin can't be demoted; the user is notified |
+| PATCH | `/admin/users/:id/status` | Admin (Super for super admins) | `isActive`; not yourself; the last active super admin can't be deactivated |
+| POST | `/admin/users/:id/reset-password` | Admin (Super for super admins) | `newPassword` (≥ 6); the user is notified |
 | GET | `/reports/workload` | Admin | Per-employee remaining effort vs capacity, status |
 | GET | `/reports/overdue-tasks` | Admin | |
 | GET | `/reports/department-workload` | Admin | Capacity, assigned hours, utilisation % |

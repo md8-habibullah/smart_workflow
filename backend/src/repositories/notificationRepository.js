@@ -1,7 +1,12 @@
 import { defaultExecutor } from '../config/db.js';
+import { enqueueForUser } from './emailRepository.js';
 
-export const createNotification = (userId, title, message, type = 'INFO', ex = defaultExecutor) =>
-  ex.query('INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)', [userId, title, message, type]);
+/** Creates an in-app notification and, when e-mail is configured for this event, queues the matching e-mail. */
+export const createNotification = async (userId, title, message, type = 'INFO', ex = defaultExecutor) => {
+  const result = await ex.query('INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)', [userId, title, message, type]);
+  await enqueueForUser(userId, { title, message, type }, ex);
+  return result;
+};
 
 export const notifyMany = async (userIds, title, message, type, ex = defaultExecutor) => {
   for (const userId of new Set(userIds.filter(Boolean))) {

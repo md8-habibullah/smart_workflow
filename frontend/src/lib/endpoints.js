@@ -8,7 +8,16 @@ export const authApi = {
   me: () => api.get('/auth/me'),
   updateProfile: (data) => api.patch('/auth/profile', data),
   changePassword: (data) => api.post('/auth/change-password', data),
-  publicDepartments: () => api.get('/departments/public')
+  options: () => api.get('/auth/options'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
+  publicDepartments: () => api.get('/departments/public'),
+  uploadAvatar: (file, onProgress) => {
+    const form = new FormData()
+    form.append('avatar', file)
+    return api.upload('/auth/avatar', form, onProgress)
+  },
+  deleteAvatar: () => api.del('/auth/avatar')
 };
 
 export const dashboardApi = {
@@ -34,7 +43,16 @@ export const tasksApi = {
   deleteWorkLog: (id, logId) => api.del(`/tasks/${id}/work-logs/${logId}`),
   comments: (id) => api.get(`/tasks/${id}/comments`),
   addComment: (id, content) => api.post(`/tasks/${id}/comments`, { content }),
-  deleteComment: (id, commentId) => api.del(`/tasks/${id}/comments/${commentId}`)
+  deleteComment: (id, commentId) => api.del(`/tasks/${id}/comments/${commentId}`),
+  attachments: (id) => api.get(`/tasks/${id}/attachments`),
+  uploadAttachments: (id, files, onProgress) => {
+    const form = new FormData()
+    for (const f of files) form.append('files', f)
+    return api.upload(`/tasks/${id}/attachments`, form, onProgress)
+  },
+  downloadAttachment: (id, attachmentId, inline = false) =>
+    api.blob(`/tasks/${id}/attachments/${attachmentId}/download`, inline ? { inline: 1 } : undefined),
+  deleteAttachment: (id, attachmentId) => api.del(`/tasks/${id}/attachments/${attachmentId}`)
 };
 
 export const employeesApi = {
@@ -78,7 +96,20 @@ export const adminApi = {
   users: (params) => api.get('/admin/users', params),
   createUser: (data) => api.post('/admin/users', data),
   changeRole: (userId, role) => api.patch(`/admin/users/${userId}/role`, { role }),
-  setActive: (userId, isActive) => api.patch(`/admin/users/${userId}/status`, { isActive })
+  setActive: (userId, isActive) => api.patch(`/admin/users/${userId}/status`, { isActive }),
+  resetPassword: (userId, newPassword) => api.post(`/admin/users/${userId}/reset-password`, { newPassword })
+};
+
+/** Super-admin system settings. */
+export const settingsApi = {
+  email: () => api.get('/settings/email'),
+  saveEmail: (data) => api.put('/settings/email', data),
+  testEmail: (to, settings) => api.post('/settings/email/test', { to, settings }),
+  outbox: (params) => api.get('/settings/email/outbox', params),
+  outboxMessage: (id) => api.get(`/settings/email/outbox/${id}`),
+  retry: (id) => api.post(`/settings/email/outbox/${id}/retry`),
+  flush: () => api.post('/settings/email/outbox/flush'),
+  clearOutbox: (status) => api.del(`/settings/email/outbox${status ? `?status=${status}` : ''}`)
 };
 
 export const reportsApi = {

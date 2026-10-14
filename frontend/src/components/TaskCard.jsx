@@ -42,7 +42,7 @@ export default function TaskCard({ task, showAssignee = true, className }) {
           <span className="inline-flex items-center gap-1.5">
             {task.assigned_employee_name ? (
               <>
-                <Avatar name={task.assigned_employee_name} size="xs" />
+                <Avatar name={task.assigned_employee_name} src={task.assigned_avatar_url} size="xs" />
                 {task.assigned_employee_name}
               </>
             ) : (

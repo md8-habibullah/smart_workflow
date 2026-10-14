@@ -29,6 +29,7 @@ export const api = (token) => {
     get: (url) => withAuth(request(app).get(`/api${url}`)),
     post: (url, body = {}) => withAuth(request(app).post(`/api${url}`)).send(body),
     patch: (url, body = {}) => withAuth(request(app).patch(`/api${url}`)).send(body),
+    put: (url, body = {}) => withAuth(request(app).put(`/api${url}`)).send(body),
     delete: (url) => withAuth(request(app).delete(`/api${url}`))
   };
 };

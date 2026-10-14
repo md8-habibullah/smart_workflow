@@ -2,7 +2,8 @@ import { defaultExecutor } from '../config/db.js';
 
 export const getCommentsByTask = (taskId, ex = defaultExecutor) =>
   ex.query(
-    `SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, u.email, u.role, e.full_name
+    `SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, u.email, u.role, e.full_name,
+            CASE WHEN u.avatar_file IS NOT NULL THEN '/api/files/avatars/' || u.avatar_file END AS avatar_url
      FROM comments c
      INNER JOIN users u ON c.user_id = u.id
      LEFT JOIN employees e ON u.id = e.user_id

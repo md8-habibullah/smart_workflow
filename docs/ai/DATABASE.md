@@ -44,6 +44,7 @@ erDiagram
 | `comments` | Discussion | |
 | `task_history` | Audit trail | `action`, `details`, `actor_id` |
 | `notifications` | In-app inbox | `type`, `is_read` |
+| `attachments` | Files on tasks | `original_name` (display only), `stored_name` (random, UNIQUE), `mime_type`, `size_bytes`; cascades with the task |
 
 All foreign keys are enforced (`PRAGMA foreign_keys = ON`). Deleting a task cascades to its skills, assignments, logs, comments and history.
 
@@ -55,8 +56,28 @@ All foreign keys are enforced (`PRAGMA foreign_keys = ON`). Deleting a task casc
 | --- | --- |
 | 1 | Base schema (idempotent `CREATE … IF NOT EXISTS`, so pre-versioning databases adopt it) |
 | 2 | `tasks.completed_at`; one-current-assignment unique index; extra indexes; replaces the broken legacy seed password hash with a real bcrypt hash of `password123` |
+| 3 | `users.avatar_file`; `attachments` table + index (file uploads) |
+| 4 | `users.password_changed_at` (session revocation); `email_settings` (single row, id = 1), `email_outbox` (+ status/next-attempt index), `password_resets` (SHA-256 token hashes) |
 
 **Adding a change:** append a new function to `migrations`, never edit a released one. `GET /api/health` reports `schemaVersion`.
+
+**Backups:** before applying pending migrations to a database *file*, the server copies it to `backend/data/backups/<name>.v<old>.<timestamp>.db` (git-ignored). To roll back, stop the server and copy the backup over `smart_workflow.db`.
+
+| Command | What it does |
+| --- | --- |
+| `npm run db:status` | Read-only: the file's schema version vs. the code's, pending migrations, backup count |
+| `npm run db:migrate` | Backs up, applies pending migrations, prints row counts per table (safe to repeat) |
+| `npm run db:reset` | Wipes and reseeds demo data |
+
+**Uploaded files** live in `backend/uploads/{attachments,avatars}/` (git-ignored), named with 32 random hex characters plus the extension. Deleting an attachment or a task, or replacing a photo, removes the file from disk; failed uploads are cleaned up automatically.
+
+## E-mail tables
+
+| Table | Purpose |
+| --- | --- |
+| `email_settings` | The one global configuration (CHECK `id = 1`): enabled, transport `SMTP`/`LOG`, host/port/TLS/user, `smtp_password_enc` (AES-256-GCM, key from `SETTINGS_SECRET` or `JWT_SECRET`), sender, `app_url`, `disabled_events` (JSON array) |
+| `email_outbox` | Transactional outbox. Rows are inserted in the same transaction as the notification that caused them, so rolled-back changes never send mail. `status` PENDING → SENT, or PENDING (retry after 1 min, then 4 min) → FAILED after 3 attempts |
+| `password_resets` | One-time reset tokens: only `token_hash` (SHA-256) is stored, with `expires_at` and `used_at` |
 
 ## Persistence model
 

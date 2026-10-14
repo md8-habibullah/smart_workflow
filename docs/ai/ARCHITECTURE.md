@@ -81,6 +81,8 @@ sequenceDiagram
 | **Remaining hours, not estimates** | Workload = Σ max(0, estimate − logged hours) over active tasks, so logging work frees capacity. |
 | **Timestamps stored as UTC `YYYY-MM-DD HH:MM:SS`** | Same format as `DATETIME('now')`, so string comparison is correct in SQL. The frontend parses them as UTC (`lib/format.js → parseServerDate`). |
 | **React Query for all server state** | Caching, background refetch, loading/error states and cache invalidation after mutations, with no hand-rolled global store. Auth is the only React context. |
+| **Transactional outbox for e-mail** | Notifications insert an `email_outbox` row inside the request's transaction; a background worker (`services/mailService.js`) delivers it afterwards with retries. A slow or broken SMTP server never fails or slows down a request, and a rolled-back change never sends mail. |
+| **Settings in the database, secrets encrypted** | The super admin configures SMTP at runtime; the password is stored AES-256-GCM encrypted (`utils/secretBox.js`) and never returned by the API. |
 | **Code-split pages** | Landing/login load fast; Recharts is only fetched when a chart page is opened. |
 
 ## 5. Repository layout
@@ -117,3 +119,6 @@ smart_workflow/
 - All SQL parameterised; dynamic `UPDATE` column lists come from fixed allow-lists, never from user keys.
 - Admins cannot manage super admins or their own account from admin endpoints; only super admins create admins.
 - The hard-coded `password123` login backdoor from the original code was **removed**.
+- Password change/reset stamps `users.password_changed_at`; tokens issued before it are rejected (stateless JWT with server-side revocation).
+- Forgot-password tokens: 32 random bytes, only the SHA-256 stored, 30-minute expiry, single use, same response for unknown e-mails.
+- E-mail HTML escapes all user text; the admin preview renders it in a sandboxed iframe.

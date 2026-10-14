@@ -33,13 +33,15 @@ Set in `backend/.env` for real deployments: `NODE_ENV=production`, a random `JWT
 | Command | Effect |
 | --- | --- |
 | *(automatic)* | Creates `backend/data/smart_workflow.db`, runs migrations, seeds demo data if empty |
+| `npm run db:status` | Read-only check: schema version, pending migrations |
+| `npm run db:migrate` | Back up the file, apply pending migrations, print table counts |
 | `npm run db:reset` | **Wipes** the database and reseeds demo data |
 | `DB_FILE=:memory: npm start` (in `backend/`) | Throw-away database for demos |
 
 ## Tests & quality
 
 ```bash
-npm test               # backend: 72 Jest + supertest integration tests (in-memory DB)
+npm test               # backend: 106 Jest + supertest integration tests (in-memory DB, temp upload folder)
 npm run lint           # frontend: oxlint
 npm run build          # frontend production build (catches import/JSX errors)
 ```
@@ -55,6 +57,11 @@ npm run build          # frontend production build (catches import/JSX errors)
 | `JWT_EXPIRES_IN` | 24h | Token lifetime |
 | `BCRYPT_ROUNDS` | 10 | Password hashing cost |
 | `ALLOWED_ORIGINS` | localhost list | CORS allow-list (production only) |
+| `UPLOAD_DIR` | uploads | Where attachments/photos are stored (relative to `backend/`) |
+| `MAX_UPLOAD_MB` | 10 | Per-file attachment limit (photos are always ≤ 2 MB) |
+| `SETTINGS_SECRET` | `JWT_SECRET` | Key for encrypting the stored SMTP password (changing it means re-entering the password) |
+| `EMAIL_WORKER` | on | `off` disables the background e-mail sender |
+| `PASSWORD_RESET_TTL_MINUTES` | 30 | Lifetime of forgot-password links |
 
 Frontend (`frontend/.env.local`, optional): `VITE_API_PROXY_TARGET` (dev proxy target), `VITE_API_BASE_URL` (API URL for separately hosted builds).
 
@@ -66,4 +73,7 @@ Frontend (`frontend/.env.local`, optional): `VITE_API_PROXY_TARGET` (dev proxy t
 | `Port 5000 is already in use` | Stop the other process or set `PORT` in `backend/.env` (and `VITE_API_PROXY_TARGET`) |
 | Demo login fails on an old database | Restart once: migration 2 repairs legacy passwords. Or `npm run db:reset` |
 | "Too many attempts" on login | Auth rate limit (50 per 15 min); wait or restart the server |
-| Changes to the DB file not visible | Only one server process should use a DB file at a time |
+| Changes to the DB file not visible | Only one server process should use a DB file at a time; a running server keeps the DB in memory and overwrites manual edits to the file |
+| "File type not allowed" | Only images, PDF, text/CSV/JSON, ZIP and Office files are accepted |
+| E-mails not arriving | Settings → E-mail settings: check *Send e-mails* is on, use **Send test e-mail** to see the SMTP error, check the Outbox (Failed tab → Retry). Gmail needs an *App password*. Use the LOG transport for demos without SMTP |
+| Need to undo a migration | Stop the server, copy the newest file from `backend/data/backups/` over `smart_workflow.db` |

@@ -1,6 +1,7 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import { saveDb } from './config/db.js';
+import { startMailWorker, stopMailWorker } from './services/mailService.js';
 
 const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log('=======================================================');
@@ -8,6 +9,7 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`  Listening on: http://0.0.0.0:${env.PORT}`);
   console.log(`  Environment: ${env.NODE_ENV}`);
   console.log('=======================================================');
+  if (env.EMAIL_WORKER) startMailWorker();
 });
 
 server.on('error', (err) => {
@@ -21,6 +23,7 @@ server.on('error', (err) => {
 
 const shutdown = (signal) => {
   console.log(`${signal} received: flushing database and shutting down.`);
+  stopMailWorker();
   saveDb();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();

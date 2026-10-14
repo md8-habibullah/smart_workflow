@@ -168,7 +168,7 @@ function Allocation({ data }) {
                 <div className="mt-3 space-y-2">
                   {ineligible.map((rec) => (
                     <div key={rec.employeeId} className="flex items-start gap-3 rounded-xl border border-dashed border-slate-200 bg-white p-4">
-                      <Avatar name={rec.employeeName} size="sm" className="opacity-60" />
+                      <Avatar name={rec.employeeName} src={rec.avatarUrl} size="sm" className="opacity-60" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-700">{rec.employeeName}</p>
                         <ul className="mt-1 space-y-0.5">
@@ -204,7 +204,7 @@ function CandidateCard({ rec, rank, onAssign, disabled }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="flex flex-1 items-start gap-3">
           <div className="relative">
-            <Avatar name={rec.employeeName} />
+            <Avatar name={rec.employeeName} src={rec.avatarUrl} />
             <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white ring-2 ring-white">
               {rank}
             </span>
@@ -320,7 +320,7 @@ function AssignModal({ data, rec, onClose, onAssigned }) {
           </div>
         ) : (
           <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
-            <Avatar name={rec.employeeName} size="sm" />
+            <Avatar name={rec.employeeName} src={rec.avatarUrl} size="sm" />
             <div className="flex-1 text-sm">
               <p className="font-semibold text-slate-900">{rec.employeeName}</p>
               <p className="text-slate-500">Allocation score {rec.totalScore}</p>

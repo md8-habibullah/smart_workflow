@@ -4,9 +4,11 @@ import toast from 'react-hot-toast'
 import { Briefcase, Building2, KeyRound, Mail, Save, Award, UserCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { authApi } from '../lib/endpoints'
-import { Avatar, Button, Card, CardHeader, Field, FormError, Input, PageHeader } from '../components/ui'
+import { tokenStore } from '../lib/api'
+import { Button, Card, CardHeader, Field, FormError, Input, PageHeader } from '../components/ui'
 import { RoleBadge } from '../components/badges'
 import SkillsEditor from '../components/SkillsEditor'
+import AvatarUploader from '../components/AvatarUploader'
 
 export default function ProfilePage() {
   const { user, refreshUser, displayName } = useAuth()
@@ -25,8 +27,10 @@ export default function ProfilePage() {
 
   const changePassword = useMutation({
     mutationFn: () => authApi.changePassword(pw),
-    onSuccess: () => {
-      toast.success('Password changed')
+    onSuccess: (res) => {
+      // The server revokes older sessions and returns a fresh token for this one.
+      if (res.data?.token) tokenStore.set(res.data.token)
+      toast.success(res.message || 'Password changed')
       setPw({ currentPassword: '', newPassword: '', confirmPassword: '' })
     },
   })
@@ -40,8 +44,8 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <Card>
             <div className="flex flex-col items-center text-center">
-              <Avatar name={displayName} size="xl" />
-              <p className="mt-3 text-lg font-semibold text-slate-900">{displayName}</p>
+              <AvatarUploader />
+              <p className="mt-4 text-lg font-semibold text-slate-900">{displayName}</p>
               <p className="text-sm text-slate-500">{employee?.position}</p>
               <div className="mt-3">
                 <RoleBadge role={user?.role} />

@@ -33,7 +33,7 @@ export const authenticate = asyncHandler(async (req, res, next) => {
   }
 
   const account = await queryOne(
-    `SELECT u.id, u.email, u.role, u.approval_status, u.is_active,
+    `SELECT u.id, u.email, u.role, u.approval_status, u.is_active, u.password_changed_at,
             e.id AS employee_id, e.full_name, e.is_active AS employee_active
      FROM users u
      LEFT JOIN employees e ON e.user_id = u.id
@@ -44,6 +44,10 @@ export const authenticate = asyncHandler(async (req, res, next) => {
   if (!account) throw unauthorized('Account no longer exists.');
   if (!account.is_active) throw forbidden('Account is deactivated. Please contact an administrator.');
   if (account.approval_status !== 'APPROVED') throw forbidden('Account pending admin approval or rejected.');
+  // A password change or reset signs out every session that was opened before it.
+  if (account.password_changed_at && decoded.iat < Date.parse(`${account.password_changed_at.replace(' ', 'T')}Z`) / 1000) {
+    throw unauthorized('Your password was changed. Please sign in again.');
+  }
 
   req.user = {
     id: account.id,

@@ -10,6 +10,7 @@ import {
   FolderKanban,
   History,
   MessageSquare,
+  Paperclip,
   Pencil,
   Play,
   RotateCcw,
@@ -47,6 +48,7 @@ import {
 } from '../../components/ui'
 import { Deadline, PriorityBadge, ProficiencyBadge, StatusBadge } from '../../components/badges'
 import TaskFormModal from '../../components/TaskFormModal'
+import TaskAttachments from '../../components/TaskAttachments'
 
 const TRANSITION_STYLE = {
   IN_PROGRESS: { icon: Play, variant: 'primary' },
@@ -199,6 +201,7 @@ function TaskDetail({ task }) {
             <Tabs
               tabs={[
                 { value: 'comments', label: 'Comments', count: task.comment_count },
+                { value: 'files', label: 'Files' },
                 { value: 'worklogs', label: 'Work logs' },
                 { value: 'history', label: 'History' },
               ]}
@@ -207,6 +210,7 @@ function TaskDetail({ task }) {
               className="mb-5"
             />
             {tab === 'comments' && <Comments taskId={task.id} onChange={refresh} />}
+            {tab === 'files' && <TaskAttachments task={task} onChange={refresh} />}
             {tab === 'worklogs' && <WorkLogs task={task} canLog={canLogWork} onChange={refresh} />}
             {tab === 'history' && <TaskHistory taskId={task.id} />}
           </Card>
@@ -217,7 +221,7 @@ function TaskDetail({ task }) {
             <CardHeader title="Assignment" />
             {task.assigned_employee_name ? (
               <div className="flex items-center gap-3">
-                <Avatar name={task.assigned_employee_name} />
+                <Avatar name={task.assigned_employee_name} src={task.assigned_avatar_url} />
                 <div className="min-w-0">
                   {isAdmin ? (
                     <Link to={`/app/employees/${task.assigned_employee_id}`} className="font-semibold text-slate-900 hover:text-brand-700">
@@ -415,7 +419,7 @@ function Comments({ taskId, onChange }) {
             const mine = c.user_id === user?.id
             return (
               <li key={c.id} className="group flex gap-3">
-                <Avatar name={c.full_name || c.email} size="sm" />
+                <Avatar name={c.full_name || c.email} src={c.avatar_url} size="sm" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-slate-900">{c.full_name || c.email}</span>
@@ -570,6 +574,8 @@ const HISTORY_ICONS = {
   STATUS_CHANGED: Eye,
   WORK_LOGGED: Timer,
   UPDATED: Pencil,
+  ATTACHMENT_ADDED: Paperclip,
+  ATTACHMENT_REMOVED: Paperclip,
 }
 
 function TaskHistory({ taskId }) {

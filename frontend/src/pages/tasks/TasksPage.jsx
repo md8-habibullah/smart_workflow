@@ -14,6 +14,22 @@ import { exportCsv } from '../../lib/csv'
 import TaskBoard from './TaskBoard'
 
 const STATUS_TABS = ['', 'PENDING', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'COMPLETED', 'CANCELLED']
+const VIEW_KEY = 'swta.tasks.view'
+
+const savedView = () => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'board'
+  } catch {
+    return 'board'
+  }
+}
+
+/** Kanban by default; the list is used when asked for, remembered, or when a status filter is in the URL. */
+const resolveView = (params) => {
+  const v = params.get('view')
+  if (v === 'board' || v === 'list') return v
+  return params.get('status') ? 'list' : savedView()
+}
 
 export default function TasksPage() {
   const { isAdmin } = useAuth()
@@ -23,7 +39,7 @@ export default function TasksPage() {
   const [search, setSearch] = useState(params.get('search') || '')
   const debouncedSearch = useDebounced(search, 300)
 
-  const view = params.get('view') === 'board' ? 'board' : 'list'
+  const view = resolveView(params)
   const filters = {
     // The board shows every status as a column, so the status filter only applies to the list.
     status: view === 'list' ? params.get('status') || undefined : undefined,
@@ -67,14 +83,24 @@ export default function TasksPage() {
           <>
             <div className="flex rounded-lg bg-slate-100 p-1" role="group" aria-label="View">
               {[
-                ['list', 'List', List],
                 ['board', 'Board', Columns3],
+                ['list', 'List', List],
               ].map(([v, label, Icon]) => (
                 <button
                   key={v}
                   type="button"
                   aria-pressed={view === v}
-                  onClick={() => updateParam('view', v === 'board' ? 'board' : '')}
+                  onClick={() => {
+                    try {
+                      localStorage.setItem(VIEW_KEY, v)
+                    } catch {
+                      /* not remembered */
+                    }
+                    const next = new URLSearchParams(params)
+                    next.set('view', v)
+                    if (v === 'board') next.delete('status')
+                    setParams(next, { replace: true })
+                  }}
                   className={cn(
                     'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition',
                     view === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800',
@@ -208,7 +234,7 @@ export default function TasksPage() {
                           <td>
                             {t.assigned_employee_name ? (
                               <span className="flex items-center gap-2">
-                                <Avatar name={t.assigned_employee_name} size="xs" />
+                                <Avatar name={t.assigned_employee_name} src={t.assigned_avatar_url} size="xs" />
                                 <span className="truncate">{t.assigned_employee_name}</span>
                               </span>
                             ) : (

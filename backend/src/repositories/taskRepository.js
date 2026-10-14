@@ -15,6 +15,7 @@ const TASK_SELECT = `
     e.full_name AS assigned_employee_name,
     e.employee_code AS assigned_employee_code,
     e.user_id AS assigned_user_id,
+    (SELECT CASE WHEN au.avatar_file IS NOT NULL THEN '/api/files/avatars/' || au.avatar_file END FROM users au WHERE au.id = e.user_id) AS assigned_avatar_url,
     COALESCE((SELECT SUM(wl.hours_worked) FROM work_logs wl WHERE wl.task_id = t.id), 0) AS logged_hours,
     ${REMAINING_HOURS_SQL} AS remaining_hours,
     CASE WHEN t.status NOT IN ('COMPLETED', 'CANCELLED') AND t.deadline < DATETIME('now') THEN 1 ELSE 0 END AS is_overdue,

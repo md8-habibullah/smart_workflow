@@ -102,6 +102,8 @@ export const createUserSchema = z.object({
 
 export const roleSchema = z.object({ role: z.enum(ROLES) });
 
+export const resetPasswordSchema = z.object({ newPassword: password });
+
 export const activeSchema = z.object({ isActive: z.boolean({ required_error: 'isActive is required' }) });
 
 // ---------------------------------------------------------------- departments / skills
@@ -254,4 +256,52 @@ export const notificationQuery = z.object({
     .optional()
     .transform((v) => v === 'true'),
   limit: z.coerce.number().int().positive().max(200).optional().default(50)
+});
+
+// ---- e-mail settings & password recovery
+
+export const EMAIL_TRANSPORTS = ['SMTP', 'LOG'];
+
+const blankToNull = (schema) => z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? null : v), schema);
+
+export const emailSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    transport: z.enum(EMAIL_TRANSPORTS),
+    smtpHost: blankToNull(z.string().trim().max(255).nullable()).optional().default(null),
+    smtpPort: z.coerce.number().int().min(1).max(65535).default(587),
+    smtpSecure: z.boolean().default(false),
+    smtpUser: blankToNull(z.string().trim().max(255).nullable()).optional().default(null),
+    // Omitted or empty = keep the stored password; clearPassword removes it.
+    smtpPassword: z.string().max(512).optional(),
+    clearPassword: z.boolean().optional().default(false),
+    fromName: trimmed(1, 'Sender name is required').max(100),
+    fromEmail: email,
+    replyTo: blankToNull(email.nullable()).optional().default(null),
+    appUrl: z.string().trim().url('App URL must be a full URL, e.g. http://localhost:5173').max(255),
+    disabledEvents: z.array(z.string().trim().max(50)).max(50).default([])
+  })
+  .superRefine((v, ctx) => {
+    if (v.transport === 'SMTP' && !v.smtpHost) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['smtpHost'], message: 'SMTP host is required for the SMTP transport' });
+    }
+  });
+
+export const testEmailSchema = z.object({
+  to: email,
+  settings: emailSettingsSchema.optional()
+});
+
+export const outboxQuerySchema = z.object({
+  status: z.enum(['PENDING', 'SENT', 'FAILED']).optional(),
+  search: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().positive().max(200).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0)
+});
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetWithTokenSchema = z.object({
+  token: z.string().trim().regex(/^[a-f0-9]{64}$/, 'Invalid or expired reset link'),
+  newPassword: password
 });

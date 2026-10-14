@@ -41,7 +41,7 @@ export const skillComponentScore = (employeeScore, requiredScore) => {
 const loadCandidates = (ex) =>
   ex.query(`
     SELECT e.id AS employee_id, e.full_name, e.employee_code, e.job_position, e.daily_capacity_hours,
-           d.name AS department_name
+           d.name AS department_name, CASE WHEN u.avatar_file IS NOT NULL THEN '/api/files/avatars/' || u.avatar_file END AS avatar_url
     FROM employees e
     INNER JOIN users u ON e.user_id = u.id
     LEFT JOIN departments d ON e.department_id = d.id
@@ -125,6 +125,7 @@ export const calculateTaskRecommendations = async (taskId, ex = defaultExecutor,
       employeeCode: emp.employee_code,
       jobPosition: emp.job_position,
       departmentName: emp.department_name,
+      avatarUrl: emp.avatar_url ?? null,
       isCurrentAssignee: task.assigned_employee_id === emp.employee_id,
       workload
     };

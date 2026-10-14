@@ -6,6 +6,8 @@ import { PageLoader } from './components/ui'
 import LandingPage from './pages/public/LandingPage'
 import LoginPage from './pages/public/LoginPage'
 import RegisterPage from './pages/public/RegisterPage'
+import ForgotPasswordPage from './pages/public/ForgotPasswordPage'
+import ResetPasswordPage from './pages/public/ResetPasswordPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 // Authenticated pages are code-split so the landing/login bundle stays small.
@@ -23,6 +25,7 @@ const ApprovalsPage = lazy(() => import('./pages/admin/ApprovalsPage'))
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const EmailSettingsPage = lazy(() => import('./pages/settings/EmailSettingsPage'))
 
 function RequireAuth({ children }) {
   const { status } = useAuth()
@@ -35,6 +38,11 @@ function RequireAuth({ children }) {
 function RequireAdmin({ children }) {
   const { isAdmin } = useAuth()
   return isAdmin ? children : <Navigate to="/app" replace />
+}
+
+function RequireSuperAdmin({ children }) {
+  const { isSuperAdmin } = useAuth()
+  return isSuperAdmin ? children : <Navigate to="/app" replace />
 }
 
 function GuestOnly({ children }) {
@@ -52,6 +60,9 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
       <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
+      <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
+      {/* Not guest-only: a reset link must work even if another account is signed in on this browser. */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route
         path="/app"
@@ -82,6 +93,7 @@ export default function App() {
           <Route path="reports" element={admin(<ReportsPage />)} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="settings/email" element={<RequireSuperAdmin><EmailSettingsPage /></RequireSuperAdmin>} />
           <Route path="*" element={<NotFoundPage inApp />} />
         </Route>
       </Route>

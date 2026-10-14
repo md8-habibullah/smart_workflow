@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Building2, Check, Mail, Phone, UserCheck, UserPlus, Users, X } from 'lucide-react'
+import { Building2, Check, KeyRound, Mail, Phone, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { adminApi } from '../../lib/endpoints'
 import { timeAgo } from '../../lib/format'
@@ -10,6 +10,8 @@ import { useDebounced } from '../../lib/useDebounced'
 import { Avatar, Badge, Button, Card, EmptyState, Field, FormError, Modal, PageHeader, QueryView, SearchInput, Select, Tabs, Textarea } from '../../components/ui'
 import { ApprovalBadge, RoleBadge } from '../../components/badges'
 import CreateUserModal from './CreateUserModal'
+import RoleSelect from './RoleSelect'
+import ResetPasswordModal from './ResetPasswordModal'
 
 export default function ApprovalsPage() {
   const [tab, setTab] = useState('pending')
@@ -69,7 +71,7 @@ function PendingList({ query }) {
             {list.map((u) => (
               <Card key={u.id}>
                 <div className="flex items-start gap-3">
-                  <Avatar name={u.full_name || u.email} />
+                  <Avatar name={u.full_name || u.email} src={u.avatar_url} />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900">{u.full_name}</p>
                     <p className="text-sm text-slate-500">{u.job_position}</p>
@@ -112,6 +114,7 @@ function AllUsers() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [role, setRole] = useState('')
+  const [resetting, setResetting] = useState(null)
   const debounced = useDebounced(search)
   const params = { search: debounced || undefined, status: status || undefined, role: role || undefined }
   const query = useQuery({ queryKey: ['users', 'all', params], queryFn: () => adminApi.users(params), placeholderData: keepPreviousData })
@@ -169,7 +172,7 @@ function AllUsers() {
                         <tr key={u.id}>
                           <td>
                             <div className="flex items-center gap-3">
-                              <Avatar name={u.full_name || u.email} size="sm" className={u.is_active ? '' : 'opacity-50'} />
+                              <Avatar name={u.full_name || u.email} src={u.avatar_url} size="sm" className={u.is_active ? '' : 'opacity-50'} />
                               <div className="min-w-0">
                                 {u.employee_id ? (
                                   <Link to={`/app/employees/${u.employee_id}`} className="block truncate font-semibold text-slate-900 hover:text-brand-700">
@@ -183,7 +186,11 @@ function AllUsers() {
                             </div>
                           </td>
                           <td>
-                            <RoleBadge role={u.role} />
+                            {isSuperAdmin && canManage && u.approval_status === 'APPROVED' ? (
+                              <RoleSelect user={u} className="w-36 py-1.5" />
+                            ) : (
+                              <RoleBadge role={u.role} />
+                            )}
                           </td>
                           <td>
                             <div className="flex flex-wrap gap-1.5">
@@ -195,9 +202,16 @@ function AllUsers() {
                           <td className="whitespace-nowrap text-slate-500">{timeAgo(u.created_at)}</td>
                           <td className="text-right">
                             {canManage && (
-                              <Button size="xs" variant={u.is_active ? 'danger-ghost' : 'secondary'} onClick={() => toggle.mutate(u)}>
-                                {u.is_active ? 'Deactivate' : 'Activate'}
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                {u.approval_status === 'APPROVED' && (
+                                  <Button size="xs" variant="ghost" icon={KeyRound} onClick={() => setResetting(u)}>
+                                    Reset password
+                                  </Button>
+                                )}
+                                <Button size="xs" variant={u.is_active ? 'danger-ghost' : 'secondary'} onClick={() => toggle.mutate(u)}>
+                                  {u.is_active ? 'Deactivate' : 'Activate'}
+                                </Button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -210,6 +224,7 @@ function AllUsers() {
           )
         }
       </QueryView>
+      <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, BarChart3, Bell, Building2, CornerDownLeft, FolderKanban, LayoutDashboard, ListTodo, Search, UserCheck, UserCircle, Users, Award } from 'lucide-react'
+import { ArrowRight, BarChart3, Bell, Building2, CornerDownLeft, FolderKanban, LayoutDashboard, ListTodo, Mail, Search, UserCheck, UserCircle, Users, Award } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { employeesApi, projectsApi, tasksApi } from '../lib/endpoints'
 import { STATUS_META } from '../lib/format'
@@ -12,13 +12,15 @@ import { Avatar, Spinner, cn } from './ui'
 const PAGES = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard },
   { label: 'Tasks', to: '/app/tasks', icon: ListTodo },
-  { label: 'Task board', to: '/app/tasks?view=board', icon: ListTodo },
+  { label: 'Task board (Kanban)', to: '/app/tasks?view=board', icon: ListTodo },
+  { label: 'Task list', to: '/app/tasks?view=list', icon: ListTodo },
   { label: 'Projects', to: '/app/projects', icon: FolderKanban },
   { label: 'Employees', to: '/app/employees', icon: Users, admin: true },
   { label: 'Departments', to: '/app/departments', icon: Building2, admin: true },
   { label: 'Skills', to: '/app/skills', icon: Award, admin: true },
   { label: 'Users & approvals', to: '/app/approvals', icon: UserCheck, admin: true },
   { label: 'Reports', to: '/app/reports', icon: BarChart3, admin: true },
+  { label: 'E-mail settings', to: '/app/settings/email', icon: Mail, superAdmin: true },
   { label: 'Notifications', to: '/app/notifications', icon: Bell },
   { label: 'My profile', to: '/app/profile', icon: UserCircle },
 ]
@@ -45,7 +47,7 @@ export default function CommandPalette({ open, onClose }) {
 }
 
 function Palette({ onClose }) {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const inputRef = useRef(null)
   const listRef = useRef(null)
@@ -70,7 +72,7 @@ function Palette({ onClose }) {
     const q = term.trim().toLowerCase()
     const match = (...fields) => !q || fields.some((f) => String(f ?? '').toLowerCase().includes(q))
     const out = []
-    PAGES.filter((p) => (!p.admin || isAdmin) && match(p.label)).forEach((p) =>
+    PAGES.filter((p) => (!p.admin || isAdmin) && (!p.superAdmin || isSuperAdmin) && match(p.label)).forEach((p) =>
       out.push({ key: `page-${p.to}`, group: 'Pages', label: p.label, to: p.to, icon: p.icon }),
     )
     ;(tasks.data || [])
@@ -90,7 +92,7 @@ function Palette({ onClose }) {
         .forEach((e) => out.push({ key: `emp-${e.id}`, group: 'Employees', label: e.full_name, hint: `${e.employee_code} · ${e.job_position}`, to: `/app/employees/${e.id}`, person: e.full_name }))
     }
     return out
-  }, [term, tasks.data, projects.data, employees.data, isAdmin])
+  }, [term, tasks.data, projects.data, employees.data, isAdmin, isSuperAdmin])
 
   const go = (item) => {
     if (!item) return

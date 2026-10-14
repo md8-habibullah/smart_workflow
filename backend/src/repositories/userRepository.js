@@ -2,7 +2,8 @@ import { defaultExecutor } from '../config/db.js';
 
 const PUBLIC_COLUMNS = `
   u.id, u.email, u.role, u.approval_status, u.is_active, u.rejection_reason,
-  u.approved_by, u.approved_at, u.created_at, u.updated_at`;
+  u.approved_by, u.approved_at, u.created_at, u.updated_at, u.avatar_file,
+  CASE WHEN u.avatar_file IS NOT NULL THEN '/api/files/avatars/' || u.avatar_file END AS avatar_url`;
 
 export const findUserByEmail = (email, ex = defaultExecutor) =>
   ex.queryOne('SELECT * FROM users WHERE email = ? LIMIT 1', [email.trim().toLowerCase()]);
@@ -32,8 +33,12 @@ export const updateApprovalStatus = (userId, adminId, status, rejectionReason = 
     [status, adminId, rejectionReason, userId]
   );
 
+/** Also stamps password_changed_at, which invalidates every token issued before it (see authenticate). */
 export const updatePassword = (userId, passwordHash, ex = defaultExecutor) =>
-  ex.query(`UPDATE users SET password_hash = ?, updated_at = DATETIME('now') WHERE id = ?`, [passwordHash, userId]);
+  ex.query(
+    `UPDATE users SET password_hash = ?, password_changed_at = DATETIME('now'), updated_at = DATETIME('now') WHERE id = ?`,
+    [passwordHash, userId]
+  );
 
 export const updateRole = (userId, role, ex = defaultExecutor) =>
   ex.query(`UPDATE users SET role = ?, updated_at = DATETIME('now') WHERE id = ?`, [role, userId]);
@@ -66,6 +71,16 @@ export const listUsers = ({ status, role, search } = {}, ex = defaultExecutor) =
   }
   sql += ' ORDER BY u.created_at DESC, u.id DESC';
   return ex.query(sql, params);
+};
+
+export const setAvatar = (userId, avatarFile, ex = defaultExecutor) =>
+  ex.query(`UPDATE users SET avatar_file = ?, updated_at = DATETIME('now') WHERE id = ?`, [avatarFile, userId]);
+
+export const countActiveSuperAdmins = async (ex = defaultExecutor) => {
+  const row = await ex.queryOne(
+    `SELECT COUNT(*) AS c FROM users WHERE role = 'SUPER_ADMIN' AND is_active = 1 AND approval_status = 'APPROVED'`
+  );
+  return Number(row.c);
 };
 
 export const listAdminUserIds = async (ex = defaultExecutor) => {

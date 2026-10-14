@@ -10,6 +10,7 @@ const EMPLOYEE_SELECT = `
     d.name AS department_name, e.job_position, e.phone_number, e.daily_capacity_hours,
     e.is_active, e.created_at, e.updated_at,
     u.email, u.role, u.approval_status, u.is_active AS user_active,
+    CASE WHEN u.avatar_file IS NOT NULL THEN '/api/files/avatars/' || u.avatar_file END AS avatar_url,
     (SELECT COUNT(*) FROM task_assignments ta JOIN tasks t ON t.id = ta.task_id
        WHERE ta.employee_id = e.id AND ta.is_current = 1
          AND t.status IN ('ASSIGNED', 'IN_PROGRESS', 'REVIEW')) AS active_task_count,

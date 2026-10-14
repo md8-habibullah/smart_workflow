@@ -14,8 +14,12 @@ coverage/
 # Environment (keep .env.example files tracked)
 frontend/.env.local
 
-# SQLite atomic-write temp file
+# SQLite atomic-write temp file and automatic pre-migration backups
 backend/data/*.tmp
+backend/data/backups/
+
+# User-uploaded files (attachments, profile photos)
+backend/uploads/
 
 # Editors / OS
 .DS_Store

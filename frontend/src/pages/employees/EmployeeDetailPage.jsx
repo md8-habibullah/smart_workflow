@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Briefcase, Building2, Clock, ListTodo, Mail, Pencil, Phone, Power, Award, Timer } from 'lucide-react'
+import { Briefcase, Building2, Clock, KeyRound, ListTodo, Mail, Pencil, Phone, Power, Award, Timer } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { adminApi, departmentsApi, employeesApi } from '../../lib/endpoints'
 import { formatDate, hours, workloadTone } from '../../lib/format'
@@ -26,6 +26,8 @@ import {
 import { ApprovalBadge, RoleBadge } from '../../components/badges'
 import TaskCard from '../../components/TaskCard'
 import SkillsEditor from '../../components/SkillsEditor'
+import RoleSelect from '../admin/RoleSelect'
+import ResetPasswordModal from '../admin/ResetPasswordModal'
 
 export default function EmployeeDetailPage() {
   const { id } = useParams()
@@ -39,6 +41,7 @@ function EmployeeDetail({ employee }) {
   const [editing, setEditing] = useState(false)
   const [confirm, confirmDialog] = useConfirm()
   const [showAll, setShowAll] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   const active = employee.is_active && employee.user_active
   const isSelf = user?.id === employee.user_id
@@ -57,14 +60,6 @@ function EmployeeDetail({ employee }) {
     onError: (e) => toast.error(e.message),
   })
 
-  const changeRole = useMutation({
-    mutationFn: (role) => adminApi.changeRole(employee.user_id, role),
-    onSuccess: (res) => {
-      toast.success(res.message)
-      invalidate()
-    },
-    onError: (e) => toast.error(e.message),
-  })
 
   const onToggle = async () => {
     const ok = await confirm({
@@ -87,7 +82,7 @@ function EmployeeDetail({ employee }) {
         <div className="space-y-6">
           <Card>
             <div className="flex flex-col items-center text-center">
-              <Avatar name={employee.full_name} size="xl" className={active ? '' : 'opacity-50'} />
+              <Avatar name={employee.full_name} src={employee.avatar_url} size="xl" className={active ? '' : 'opacity-50'} />
               <p className="mt-3 text-lg font-semibold text-slate-900">{employee.full_name}</p>
               <p className="text-sm text-slate-500">{employee.job_position}</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -113,16 +108,16 @@ function EmployeeDetail({ employee }) {
                 </Button>
               )}
             </div>
+            {canManageAccount && employee.approval_status === 'APPROVED' && (
+              <Button variant="ghost" icon={KeyRound} className="mt-2 w-full" onClick={() => setResetting(true)}>
+                Reset password
+              </Button>
+            )}
             {isSuperAdmin && canManageAccount && employee.approval_status === 'APPROVED' && (
-              <Field label="Role" className="mt-4">
-                {(id) => (
-                  <Select id={id} value={employee.role} onChange={(e) => changeRole.mutate(e.target.value)} disabled={changeRole.isPending}>
-                    <option value="EMPLOYEE">Employee</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                  </Select>
-                )}
-              </Field>
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="mb-1.5 text-sm font-medium text-slate-700">Role</p>
+                <RoleSelect user={{ id: employee.user_id, role: employee.role, full_name: employee.full_name, email: employee.email }} />
+              </div>
             )}
           </Card>
 
@@ -196,6 +191,10 @@ function EmployeeDetail({ employee }) {
         </div>
       </div>
 
+      <ResetPasswordModal
+        user={resetting ? { id: employee.user_id, full_name: employee.full_name, email: employee.email } : null}
+        onClose={() => setResetting(false)}
+      />
       <EditEmployeeModal open={editing} employee={employee} onClose={() => setEditing(false)} onSaved={invalidate} />
     </div>
   )

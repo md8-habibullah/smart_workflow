@@ -47,7 +47,8 @@ export const changeStatus = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id, 'task id');
   const { status, note } = statusChangeSchema.parse(req.body);
   const task = await taskService.changeStatus(id, status, note, req.user);
-  res.status(200).json({ success: true, message: `Task moved to ${status}`, data: task });
+  const label = { PENDING: 'Unassigned', ASSIGNED: 'Assigned', IN_PROGRESS: 'In progress', REVIEW: 'In review', COMPLETED: 'Completed', CANCELLED: 'Cancelled' }[status];
+  res.status(200).json({ success: true, message: `Task moved to ${label}`, data: task });
 });
 
 export const getTaskRecommendations = asyncHandler(async (req, res) => {

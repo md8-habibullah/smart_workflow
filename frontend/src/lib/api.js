@@ -91,9 +91,73 @@ async function request(method, path, { body, query } = {}) {
   return payload ?? { success: true, data: null };
 }
 
+/**
+ * Multipart upload with progress (fetch cannot report upload progress, XHR can).
+ * Resolves to the response envelope like the other write helpers.
+ */
+function upload(path, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', buildUrl(path));
+    const token = tokenStore.get();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+    }
+    xhr.onerror = () => reject(new ApiError('Upload failed: cannot reach the server.', 0));
+    xhr.onload = () => {
+      let payload = null;
+      try {
+        payload = JSON.parse(xhr.responseText);
+      } catch {
+        payload = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && payload?.success !== false) return resolve(payload);
+      if (xhr.status === 401 && token && unauthorizedHandler) unauthorizedHandler();
+      const details = Array.isArray(payload?.errors) ? payload.errors.map((e) => e.message) : [];
+      reject(new ApiError(payload?.message || `Upload failed (${xhr.status})`, xhr.status, details));
+    };
+    xhr.send(formData);
+  });
+}
+
+/** Authenticated binary download, returned as a Blob (for previews and "save as"). */
+async function blob(path, query) {
+  const token = tokenStore.get();
+  const response = await fetch(buildUrl(path, query), { headers: token ? { Authorization: `Bearer ${token}` } : {} }).catch(() => {
+    throw new ApiError('Cannot reach the server.', 0);
+  });
+  if (!response.ok) {
+    let message = `Download failed (${response.status})`;
+    try {
+      message = (await response.json()).message || message;
+    } catch {
+      /* not JSON */
+    }
+    throw new ApiError(message, response.status);
+  }
+  return response.blob();
+}
+
+/** Triggers a browser download for a Blob. */
+export function saveBlob(data, filename) {
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   get: (path, query) => request('GET', path, { query }).then((r) => r.data),
   post: (path, body = {}) => request('POST', path, { body }),
   patch: (path, body = {}) => request('PATCH', path, { body }),
-  del: (path) => request('DELETE', path)
+  put: (path, body = {}) => request('PUT', path, { body }),
+  del: (path) => request('DELETE', path),
+  upload,
+  blob
 };

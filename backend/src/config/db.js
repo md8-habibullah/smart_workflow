@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { env } from './env.js';
-import { runMigrations } from './schema.js';
+import { runMigrations, SCHEMA_VERSION } from './schema.js';
 import { populateSeedData } from './seedData.js';
 
 /*
@@ -44,10 +44,32 @@ export const saveDb = () => {
   }
 };
 
+const schemaVersionOf = (database) => database.exec('PRAGMA user_version')[0].values[0][0];
+
+/** Details of the last startup migration, reported by `npm run db:migrate`. */
+export const migrationReport = { from: 0, to: 0, backup: null };
+
+/** Copies the database file before an upgrade so a failed or unwanted migration can be rolled back. */
+const backupBeforeMigration = (fromVersion) => {
+  if (inMemory || !fs.existsSync(dbPath) || fromVersion === 0 || fromVersion >= SCHEMA_VERSION) return null;
+  const dir = path.join(dbDir, 'backups');
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const target = path.join(dir, `${path.basename(dbPath, '.db')}.v${fromVersion}.${stamp}.db`);
+  fs.copyFileSync(dbPath, target);
+  return target;
+};
+
 const initialise = () => {
   // db.export() resets connection pragmas, so foreign keys are re-enabled per statement batch too.
   db.exec('PRAGMA foreign_keys = ON;');
+  migrationReport.from = schemaVersionOf(db);
+  migrationReport.backup = backupBeforeMigration(migrationReport.from);
   runMigrations(db);
+  migrationReport.to = schemaVersionOf(db);
+  if (migrationReport.from !== migrationReport.to && !inMemory && migrationReport.from > 0) {
+    console.log(`Database migrated v${migrationReport.from} → v${migrationReport.to} (backup: ${migrationReport.backup})`);
+  }
   const [{ values }] = db.exec('SELECT COUNT(*) FROM users');
   if (values[0][0] === 0) {
     populateSeedData(db);

@@ -10,7 +10,9 @@
     "start": "npm --prefix backend start",
     "test": "npm --prefix backend test",
     "lint": "npm --prefix frontend run lint",
-    "db:reset": "npm --prefix backend run db:reset"
+    "db:reset": "npm --prefix backend run db:reset",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:status": "npm --prefix backend run db:status"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

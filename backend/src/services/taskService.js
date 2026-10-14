@@ -9,6 +9,8 @@ import * as workLogRepository from '../repositories/workLogRepository.js';
 import { calculateTaskRecommendations } from './allocationEngine.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { toSqlDate, toSqlDateTime } from '../utils/dates.js';
+import * as attachmentRepository from '../repositories/attachmentRepository.js';
+import { UPLOAD_KINDS, removeUploadedFile } from '../middleware/upload.js';
 
 /*
  * Task lifecycle
@@ -147,15 +149,20 @@ export const updateTask = (taskId, data, user) =>
     return taskRepository.getTaskById(taskId, tx);
   });
 
-export const deleteTask = (taskId) =>
-  withTransaction(async (tx) => {
+export const deleteTask = async (taskId) => {
+  const files = await withTransaction(async (tx) => {
     const task = await taskRepository.getTaskById(taskId, tx);
     if (!task) throw notFound('Task not found');
     if (!['PENDING', 'CANCELLED'].includes(task.status)) {
       throw conflict('Only pending or cancelled tasks can be deleted. Cancel the task first.');
     }
+    const storedNames = await attachmentRepository.storedNamesForTask(taskId, tx);
     await taskRepository.deleteTask(taskId, tx);
+    return storedNames;
   });
+  // Rows are gone (cascade); now remove the files themselves.
+  files.forEach((name) => removeUploadedFile(UPLOAD_KINDS.attachments, name));
+};
 
 // ------------------------------------------------------------------ status workflow
 
