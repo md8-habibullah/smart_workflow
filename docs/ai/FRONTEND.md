@@ -7,7 +7,7 @@ Scaffolded with the official Vite template (`npm create vite@latest -- --templat
 | Framework / build | React 19, Vite 8 (dev server on `:5173`, `/api` proxied to `:5000`) |
 | Routing | React Router (`BrowserRouter`, nested routes, lazy-loaded pages) |
 | Server state | TanStack Query: caching, refetch, invalidation after mutations |
-| Styling | Tailwind CSS v4 (`@theme` brand palette in `src/index.css`), `clsx` + `tailwind-merge` via `cn()` |
+| Styling | Tailwind CSS v4 (`@theme` green brand palette in `src/index.css`), `clsx` + `tailwind-merge` via `cn()` |
 | Icons / charts / toasts | lucide-react, Recharts, react-hot-toast |
 | Lint | oxlint (from the template) |
 
@@ -28,11 +28,12 @@ src/
 │   ├── ui.jsx               # design system: Button, Card, Badge, Modal, useConfirm, Field, Tabs, StatCard, QueryView…
 │   ├── badges.jsx           # StatusBadge, PriorityBadge, RoleBadge, Deadline…
 │   ├── layout/AppLayout.jsx # sidebar (role-aware), mobile drawer, notification bell, user menu
+│   ├── Logo.jsx  DemoAccounts.jsx  CommandPalette.jsx
 │   ├── TaskCard.jsx  TaskFormModal.jsx  SkillsEditor.jsx
 └── pages/
     ├── public/      Landing, Login, Register (AuthShell layout)
     ├── dashboard/   DashboardPage (admin + employee variants)
-    ├── tasks/       TasksPage, TaskDetailPage, AllocationPage
+    ├── tasks/       TasksPage (list + Kanban TaskBoard), TaskDetailPage, AllocationPage
     ├── employees/   EmployeesPage, EmployeeDetailPage
     ├── projects/    ProjectsPage, ProjectDetailPage, ProjectFormModal
     ├── departments/ skills/ reports/ admin/ (Approvals, CreateUserModal)
@@ -64,6 +65,22 @@ Admin-only routes redirect employees to `/app`. The API enforces the same rules 
 - `api.get()` resolves to `data`; `api.post/patch/del` resolve to the full envelope so toasts can show `message`.
 - Forms validate on the client (mirroring the backend Zod rules), and `FormError` shows any server error, including per-field details.
 - Server timestamps are UTC without a zone: always format through `lib/format.js`.
+
+## Theme
+
+The brand colour is defined once as `--color-brand-50 … 950` in `src/index.css` (a deep green). Every component uses `brand-*` utilities, so changing those tokens re-themes the whole app; chart colours that Recharts needs as hex live at the top of `DashboardPage.jsx` and `ReportsPage.jsx`. The design deliberately avoids decorative "AI" effects (sparkle icons, blurred glows): icons describe the action (target = allocate, user-check = assign, award = skills).
+
+## Notable UI features
+
+- **Landing page** (`pages/public/LandingPage.jsx`): hero, how-it-works, a product tour with real screenshots, scoring explanation, features, roles, and a demo section.
+- **Demo accounts** (`components/DemoAccounts.jsx`, data in `lib/demo.js`): copyable credentials and one-click sign-in, shown on the landing and login pages.
+- **Kanban board** (`/app/tasks?view=board`): drag a card to another column to change its status. The backend enforces the workflow, so illegal moves show an error toast.
+- **Quick search** (`components/CommandPalette.jsx`): `Ctrl/⌘ + K` or the header search box. Jump to pages, tasks, projects and (admins) employees with the keyboard.
+- **CSV export** on the task list and every report.
+
+### Screenshots
+
+`public/screenshots/*.jpg` are real captures of the app on the seed data (1440×900, used by the landing page). After a visual change, regenerate them by running the app (`npm run dev` from the root), signing in, and capturing `/app`, `/app/tasks/4/allocate`, `/app/tasks?view=board`, `/app/tasks/3`, `/app/reports` (as admin) and `/app` (as john.doe) at 1440×900, saved under the same file names.
 
 ## Adding a page
 

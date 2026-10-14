@@ -25,11 +25,13 @@ Single-server production mode: `npm run build && npm start`, then open http://lo
 
 ## Features
 
+- **One-click demo:** the landing and login pages list demo accounts with copyable credentials and one-click sign-in.
 - **Smart allocation:** ranked, explainable recommendations (skill match 40%, workload 25%, availability 20%, deadline fit 15%), hard eligibility filters, auto-assign, reassign with reason, admin override.
-- **Task lifecycle:** Unassigned → Assigned → In progress → Review → Completed (plus cancel/reopen), role-checked transitions, full audit history.
+- **Task lifecycle:** Unassigned → Assigned → In progress → Review → Completed (plus cancel/reopen), role-checked transitions, full audit history. List view or **Kanban board** with drag-and-drop.
 - **Collaboration:** comments, time logging, in-app notifications.
 - **People management:** registration with admin approval, roles (Super Admin / Admin / Employee), employee skills and capacity, departments, projects with optional members-only allocation.
-- **Dashboards & reports:** live KPIs, workload, overdue tasks, department utilisation, project progress, on-time performance, CSV export.
+- **Dashboards & reports:** live KPIs, needs-attention list, 14-day output trend, activity feed, workload, overdue tasks, department utilisation, project progress, on-time performance, CSV export.
+- **Quick search:** `Ctrl + K` jumps to any task, project, employee or page.
 - **Responsive UI:** works on desktop and mobile.
 
 ## Project layout

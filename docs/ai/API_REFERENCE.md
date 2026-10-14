@@ -20,7 +20,7 @@ Access: **Public** · **Auth** (any approved, active account) · **Admin** (`ADM
 
 | Method | Path | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/dashboard` | Auth | Admin: org KPIs, tasks by status, workload distribution, top workload, upcoming deadlines. Employee: personal KPIs, hours logged, workload %, upcoming tasks |
+| GET | `/dashboard` | Auth | Admin: KPIs, tasks by status, `needsAttention` (overdue / awaiting review / urgent unassigned), 14-day `trend` (hours, completions), `recentActivity`, `projectProgress`, workload. Employee: personal KPIs, 7-day `trend`, workload %, `skills`, upcoming tasks, activity on own tasks |
 | GET | `/notifications?unreadOnly=true&limit=50` | Auth | `{ items, unreadCount }` |
 | PATCH | `/notifications/:id/read` | Auth (own) | |
 | POST | `/notifications/read-all` | Auth | |

@@ -78,4 +78,4 @@ Created automatically when the `users` table is empty, or on demand with `npm ru
 | tanvir.ahmed@ | Employee | Product analyst |
 | sarah.khan@ | Employee | **Pending approval** |
 
-Plus 4 departments, 11 skills, 3 projects (one members-only), and 10 tasks covering every status, one overdue and one that nobody is qualified for.
+Plus 4 departments, 11 skills, 3 projects (one members-only), and 15 tasks covering every status: one overdue, one that nobody is qualified for, and six completed over the last two weeks (one late) with time logs, comments and timestamped history, so dashboards, trends and reports have realistic data.

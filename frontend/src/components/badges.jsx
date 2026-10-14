@@ -6,6 +6,7 @@ import {
   ROLE_META,
   STATUS_META,
   WORKLOAD_META,
+  formatDate,
   formatDateTime,
   parseServerDate,
   timeAgo,
@@ -59,7 +60,7 @@ export function Deadline({ value, overdue, done, className }) {
       className={cn('inline-flex items-center gap-1.5 text-sm', isOverdue ? 'font-semibold text-red-600' : 'text-slate-600', className)}
     >
       <CalendarClock className="size-3.5 shrink-0" />
-      {isOverdue ? `Overdue · ${timeAgo(value)}` : done ? formatDateTime(value) : timeAgo(value)}
+      {isOverdue ? `Overdue · ${timeAgo(value)}` : done ? formatDate(value) : timeAgo(value)}
     </span>
   )
 }

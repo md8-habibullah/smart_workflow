@@ -60,10 +60,14 @@ export default function TaskBoard({ tasks }) {
               key={status}
               onDragOver={(e) => {
                 e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
                 setOver(status)
               }}
               onDragLeave={() => setOver((o) => (o === status ? null : o))}
-              onDrop={() => onDrop(status)}
+              onDrop={(e) => {
+                e.preventDefault()
+                onDrop(status)
+              }}
               className={cn(
                 'flex min-h-[420px] flex-col rounded-2xl border border-slate-200 bg-slate-100/60 transition',
                 over === status && dragging?.status !== status && 'border-brand-300 bg-brand-50/60',
@@ -83,7 +87,12 @@ export default function TaskBoard({ tasks }) {
                     <article
                       key={t.id}
                       draggable={draggable}
-                      onDragStart={() => setDragging(t)}
+                      onDragStart={(e) => {
+                        // Firefox only starts a drag when data is attached.
+                        e.dataTransfer.setData('text/plain', String(t.id))
+                        e.dataTransfer.effectAllowed = 'move'
+                        setDragging(t)
+                      }}
                       onDragEnd={() => {
                         setDragging(null)
                         setOver(null)
