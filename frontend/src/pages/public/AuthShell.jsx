@@ -52,7 +52,12 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           </div>
         </div>
 
-        <p className="text-sm text-brand-100/50">Smart Workforce &amp; Task Allocation System</p>
+        <p className="text-sm text-brand-100/50">
+          Smart Workforce &amp; Task Allocation System
+          <a href="https://habibullah.dev" rel="author" target="_blank" className="ml-2 text-xs text-brand-100/30 hover:text-brand-100/70">
+            · by Habibullah
+          </a>
+        </p>
       </div>
 
       <div className="flex items-center justify-center bg-white px-4 py-12 sm:px-8">

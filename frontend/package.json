@@ -28,5 +28,19 @@
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.0"
-  }
+  },
+  "description": "React frontend for the Smart Workforce & Task Allocation System",
+  "author": {
+    "name": "MD. Habibullah Sharif",
+    "url": "https://habibullah.dev"
+  },
+  "homepage": "https://github.com/md8-habibullah/smart_workflow",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/md8-habibullah/smart_workflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/md8-habibullah/smart_workflow/issues"
+  },
+  "license": "ISC"
 }

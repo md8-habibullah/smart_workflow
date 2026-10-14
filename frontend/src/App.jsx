@@ -1,3 +1,7 @@
+/**
+ * Smart Workforce & Task Allocation System: React routes
+ * @author MD. Habibullah Sharif <https://habibullah.dev> (https://github.com/md8-habibullah)
+ */
 import { lazy, Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import { useAuth } from './context/AuthContext'

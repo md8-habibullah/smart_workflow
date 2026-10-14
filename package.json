@@ -3,6 +3,27 @@
   "private": true,
   "version": "1.0.0",
   "description": "Smart Workforce & Task Allocation System: Express + SQLite API with a React frontend",
+  "author": {
+    "name": "MD. Habibullah Sharif",
+    "url": "https://habibullah.dev"
+  },
+  "homepage": "https://github.com/md8-habibullah/smart_workflow",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/md8-habibullah/smart_workflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/md8-habibullah/smart_workflow/issues"
+  },
+  "license": "ISC",
+  "keywords": [
+    "task-allocation",
+    "workforce-management",
+    "react",
+    "express",
+    "sqlite",
+    "habibullah"
+  ],
   "scripts": {
     "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",

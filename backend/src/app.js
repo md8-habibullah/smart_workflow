@@ -1,3 +1,7 @@
+/**
+ * Smart Workforce & Task Allocation System: Express application
+ * @author MD. Habibullah Sharif <https://habibullah.dev> (https://github.com/md8-habibullah)
+ */
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -26,6 +30,10 @@ const app = express();
 
 app.disable('x-powered-by');
 app.use(helmet());
+app.use((req, res, next) => {
+  res.setHeader('X-Crafted-By', 'habibullah.dev');
+  next();
+});
 
 // In development any origin is accepted (Vite may pick another localhost port).
 app.use(
@@ -51,7 +59,8 @@ app.get('/api/health', (req, res) => {
     system: 'Smart Workforce REST API',
     schemaVersion: SCHEMA_VERSION,
     timestamp: new Date().toISOString(),
-    environment: env.NODE_ENV
+    environment: env.NODE_ENV,
+    author: { name: 'MD. Habibullah Sharif', url: 'https://habibullah.dev', github: 'https://github.com/md8-habibullah' }
   });
 });
 

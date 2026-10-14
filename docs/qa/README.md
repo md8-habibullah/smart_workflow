@@ -64,3 +64,7 @@ This folder helps you prepare for the viva (oral exam) on the **Smart Workforce 
 - Engineering docs (reference): [docs/ai/](../ai/README.md) — architecture, database, allocation engine, workflow, API, audit report, frontend, runbook.
 - Project README: [README.md](../../README.md).
 - Setup guide in Bangla: [SETUP_GUIDE_BN.md](../SETUP_GUIDE_BN.md).
+
+---
+
+<sub>Smart Workforce documentation · by [MD. Habibullah Sharif](https://habibullah.dev) · [GitHub](https://github.com/md8-habibullah)</sub>

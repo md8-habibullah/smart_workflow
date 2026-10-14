@@ -21,3 +21,7 @@ These documents describe the system **as it is built now**: an Express + SQLite 
 - **Backend:** Node.js / Express, Zod validation, JWT auth, `sql.js` (SQLite compiled to WebAssembly, persisted to `backend/data/*.db`). 106 integration tests.
 - **Frontend:** React 19 + Vite, React Router, TanStack Query, Tailwind CSS v4, Recharts.
 - **Run it:** `npm run setup` once, then `npm run dev`, and open http://localhost:5173 and sign in as `admin@smartworkflow.org` / `password123`.
+
+---
+
+<sub>Smart Workforce documentation · by [MD. Habibullah Sharif](https://habibullah.dev) · [GitHub](https://github.com/md8-habibullah)</sub>

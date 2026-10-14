@@ -1,3 +1,7 @@
+/**
+ * Smart Workforce & Task Allocation System: smart allocation engine
+ * @author MD. Habibullah Sharif <https://habibullah.dev> (https://github.com/md8-habibullah)
+ */
 import { defaultExecutor } from '../config/db.js';
 import * as taskRepository from '../repositories/taskRepository.js';
 import * as skillRepository from '../repositories/skillRepository.js';

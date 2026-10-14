@@ -461,7 +461,15 @@ export default function LandingPage() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
           <Logo subtitle={false} />
-          <p>Smart Workforce &amp; Task Allocation System · University project · {new Date().getFullYear()}</p>
+          <p className="text-center">
+            Smart Workforce &amp; Task Allocation System · University project · {new Date().getFullYear()}
+            <span className="mt-1 block text-xs text-slate-400">
+              Crafted by{' '}
+              <a href="https://habibullah.dev" rel="author" target="_blank" className="hover:text-brand-700">
+                Habibullah
+              </a>
+            </span>
+          </p>
           <div className="flex gap-5">
             <Link to="/login" className="hover:text-brand-700">
               Sign in

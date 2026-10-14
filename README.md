@@ -1,3 +1,4 @@
+<!-- Smart Workforce & Task Allocation System · author: MD. Habibullah Sharif · https://habibullah.dev · https://github.com/md8-habibullah -->
 <div align="center">
 
 # Smart Workforce & Task Allocation System
@@ -791,10 +792,16 @@ Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has n
 
 ---
 
+## Author
+
+**MD. Habibullah Sharif**: full-stack developer. Website: [habibullah.dev](https://habibullah.dev) · GitHub: [@md8-habibullah](https://github.com/md8-habibullah)
+
+If this project helped you, a ⭐ on [the repository](https://github.com/md8-habibullah/smart_workflow) is appreciated.
+
 ## License
 
-Released under the **ISC** license, as declared in [`backend/package.json`](backend/package.json). The repository does not include a separate `LICENSE` file yet.
+Released under the [ISC license](LICENSE) © 2026 MD. Habibullah Sharif.
 
 <div align="center">
-<sub>Built with Express, sql.js, React, TanStack Query, Tailwind CSS and Recharts.</sub>
+<sub>Built with Express, sql.js, React, TanStack Query, Tailwind CSS and Recharts · crafted by <a href="https://habibullah.dev">Habibullah</a></sub>
 </div>

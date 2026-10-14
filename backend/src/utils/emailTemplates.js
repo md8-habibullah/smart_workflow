@@ -66,6 +66,7 @@ export const renderEmail = ({ title, message, type, appUrl, name, actionUrl, act
     .join('\n');
 
   const html = `<!doctype html>
+<!-- Smart Workforce · crafted by MD. Habibullah Sharif · https://habibullah.dev -->
 <html><body style="margin:0;padding:0;background:#f1f5f2;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f2;padding:32px 12px">
     <tr><td align="center">

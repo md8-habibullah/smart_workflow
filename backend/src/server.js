@@ -1,3 +1,7 @@
+/**
+ * Smart Workforce & Task Allocation System: HTTP server entry point
+ * @author MD. Habibullah Sharif <https://habibullah.dev> (https://github.com/md8-habibullah)
+ */
 import app from './app.js';
 import { env } from './config/env.js';
 import { saveDb } from './config/db.js';
@@ -8,6 +12,7 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log('  Smart Workforce & Task Allocation Backend Server');
   console.log(`  Listening on: http://0.0.0.0:${env.PORT}`);
   console.log(`  Environment: ${env.NODE_ENV}`);
+  console.log('  Crafted by ${NAME} · ${SITE}');
   console.log('=======================================================');
   if (env.EMAIL_WORKER) startMailWorker();
 });
