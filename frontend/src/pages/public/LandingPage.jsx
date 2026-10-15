@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { Button, cn } from '../../components/ui'
 import Logo from '../../components/Logo'
+import { GitHubButton, GitHubIcon, OpenSourceSection, REPO_URL, SITE_HOST, SITE_URL } from '../../components/OpenSource'
 import DemoAccounts from '../../components/DemoAccounts'
 
 // ------------------------------------------------------------------ content
@@ -178,6 +179,7 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <GitHubButton className="hidden md:inline-flex" />
             {signedIn ? (
               <Button to="/app" iconRight={ArrowRight}>
                 Open dashboard
@@ -202,6 +204,9 @@ export default function LandingPage() {
                 {label}
               </a>
             ))}
+            <a href={REPO_URL} target="_blank" rel="noopener" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <GitHubIcon /> Open source on GitHub
+            </a>
             {!signedIn && (
               <Link to="/login" className="block rounded-lg px-3 py-2.5 text-sm font-medium text-brand-700 hover:bg-slate-50">
                 Sign in
@@ -457,6 +462,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <OpenSourceSection />
+
       {/* ---------------- footer */}
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
@@ -470,7 +477,13 @@ export default function LandingPage() {
               </a>
             </span>
           </p>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            <a href={SITE_URL} className="hover:text-brand-700">
+              {SITE_HOST}
+            </a>
+            <a href={REPO_URL} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 hover:text-brand-700">
+              <GitHubIcon /> GitHub
+            </a>
             <Link to="/login" className="hover:text-brand-700">
               Sign in
             </Link>

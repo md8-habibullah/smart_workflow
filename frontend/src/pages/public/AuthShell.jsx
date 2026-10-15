@@ -1,5 +1,6 @@
 import { CheckCircle2 } from 'lucide-react'
 import Logo from '../../components/Logo'
+import { GitHubIcon, REPO_URL } from '../../components/OpenSource'
 
 const DOT_GRID = {
   backgroundImage: 'radial-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px)',
@@ -56,6 +57,9 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           Smart Workforce &amp; Task Allocation System
           <a href="https://habibullah.dev" rel="author" target="_blank" className="ml-2 text-xs text-brand-100/30 hover:text-brand-100/70">
             · by Habibullah
+          </a>
+          <a href={REPO_URL} target="_blank" rel="noopener" className="mt-2 flex w-fit items-center gap-1.5 text-xs text-brand-100/40 hover:text-brand-100/80">
+            <GitHubIcon className="size-3.5" /> Free &amp; open source on GitHub
           </a>
         </p>
       </div>

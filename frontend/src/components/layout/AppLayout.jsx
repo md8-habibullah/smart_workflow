@@ -32,6 +32,7 @@ import Logo, { LogoMark } from '../Logo'
 import CommandPalette, { useCommandPalette } from '../CommandPalette'
 import { useSidebar } from './useSidebar'
 import DemoNotice from '../DemoNotice'
+import { GitHubIcon, REPO_URL } from '../OpenSource'
 import { CrashScreen, ErrorBoundary } from '../ErrorBoundary'
 
 const ADMIN_NAV = [
@@ -395,6 +396,16 @@ export default function AppLayout() {
             <kbd className="hidden rounded border border-slate-200 bg-white px-1.5 text-[11px] font-medium sm:block">Ctrl K</kbd>
           </button>
           <div className="hidden flex-1 lg:block" />
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener"
+            title="Open source on GitHub: free to use and fork"
+            aria-label="Source code on GitHub"
+            className="hidden size-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 sm:inline-flex"
+          >
+            <GitHubIcon className="size-5" />
+          </a>
           <NotificationBell />
           <UserMenu />
         </header>
