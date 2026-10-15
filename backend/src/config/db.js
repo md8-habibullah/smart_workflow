@@ -22,8 +22,13 @@ const dbDir = path.resolve(__dirname, '../../data');
 const dbPath = inMemory ? null : path.resolve(dbDir, env.DB_FILE);
 
 // Locate the WebAssembly binary explicitly so serverless bundlers (Vercel) can ship it.
+// Serverless builds copy the binary next to this file (npm run build → scripts/copy-wasm.js); the
+// import.meta.url reference lets Vercel's bundler ship it. Locally it is read from node_modules.
+const bundledWasm = new URL('./sql-wasm.wasm', import.meta.url);
 const sqlJsDir = path.dirname(createRequire(import.meta.url).resolve('sql.js'));
-const SQL = await initSqlJs({ locateFile: (file) => path.join(sqlJsDir, file) });
+const SQL = await initSqlJs(
+  fs.existsSync(bundledWasm) ? { wasmBinary: fs.readFileSync(bundledWasm) } : { locateFile: (file) => path.join(sqlJsDir, file) }
+);
 
 const openDatabase = () => {
   if (dbPath && fs.existsSync(dbPath)) {
@@ -76,6 +81,10 @@ const initialise = () => {
   const [{ values }] = db.exec('SELECT COUNT(*) FROM users');
   if (values[0][0] === 0) {
     populateSeedData(db);
+  }
+  // Point e-mail links at the public URL unless the super admin already chose one.
+  if (env.APP_URL) {
+    db.run("UPDATE email_settings SET app_url = ? WHERE id = 1 AND app_url = 'http://localhost:5173'", [env.APP_URL]);
   }
   saveDb();
 };

@@ -1,0 +1,17 @@
+# Never upload secrets, local data or build leftovers to Vercel.
+# The public demo seeds its own in-memory database on every cold start.
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+.vercel
+frontend/dist
+backend/data/*.db
+backend/data/*.tmp
+backend/data/backups
+backend/uploads
+backend/src/config/sql-wasm.wasm
+coverage
+*.log
+*.pdf

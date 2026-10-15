@@ -7,8 +7,7 @@ smart_workflow/
 ├── .env                 ← the only config file (git-ignored; template: .env.example)
 ├── package.json         ← npm workspaces: backend + frontend, one `npm install`
 ├── package-lock.json    ← the only lockfile
-├── vercel.json          ← build, the API function and SPA routing
-├── api/index.mjs        ← Vercel serverless entry: exports the Express app
+├── vercel.json          ← two Vercel services (frontend, backend) + public routing
 ├── backend/             ← Express API, SQLite (sql.js), tests
 └── frontend/            ← React (Vite); reads ../.env (VITE_* keys only)
 ```
@@ -28,12 +27,33 @@ smart_workflow/
 3. Optional: under **Settings → Environment Variables**, add `JWT_SECRET`, a long random string. If it's missing, the public demo uses a built-in fallback secret, which is fine only because the demo accounts and passwords are public anyway.
 4. Deploy. Open the URL and sign in with any demo account (password `password123`).
 
+### Custom domain: allocate.habibullah.dev
+
+The live demo is served at **https://allocate.habibullah.dev**.
+
+1. In the Vercel project, open **Settings → Domains**, add `allocate.habibullah.dev`, and make it the production domain.
+2. At the DNS provider for `habibullah.dev`, add the record Vercel shows. Usually that is a **CNAME** with name `allocate` and value `cname.vercel-dns.com`.
+3. Wait for Vercel to show "Valid Configuration". HTTPS is issued automatically.
+
+Nothing else is needed:
+- E-mail links use the production domain automatically (`APP_URL`, from Vercel's `VERCEL_PROJECT_PRODUCTION_URL`).
+- The canonical URL, social preview tags and `sitemap.xml` already point to this domain.
+- The frontend and API share the origin, so no CORS settings are required.
+
 ### What happens on Vercel
 
 - `npm install` installs both workspaces, and `npm run build` builds `frontend/dist`.
-- Requests to `/api/*` go to [`api/index.mjs`](../../api/index.mjs), which is the same Express app used locally.
+- `vercel.json` defines two **services** ([docs](https://vercel.com/docs/services)):
+
+  | Service | Root | What it is | Public path |
+  | --- | --- | --- | --- |
+  | `frontend` | `frontend/` | Vite build (`dist`) on the CDN; service rewrite falls back to `index.html` | everything not under `/api` |
+  | `backend` | `backend/` | Express app `src/app.js` as a serverless function (Node, Fluid compute) | `/api/*`, prefix kept, so Express routes match unchanged |
+
+- **Bindings:** none. The browser calls `/api` on the same domain, and the backend never calls the frontend.
 - Every other path falls back to `index.html`, so client-side routing works on refresh.
-- The SQLite engine's WebAssembly file is bundled through `includeFiles` in `vercel.json`.
+- The SQLite engine's WebAssembly file is copied next to `db.js` by the backend's build (`npm run build -w backend` → `scripts/copy-wasm.js`). `db.js` references it with `new URL('./sql-wasm.wasm', import.meta.url)`, which Vercel's bundler traces and ships with the function.
+- Verified locally with `vercel build` (CLI 61.1.0). The output has two services and a backend function containing the wasm file. Running that function answered health, login, tasks and the planner from a fresh in-memory seed.
 - `VERCEL=1` is detected automatically and switches on **public demo mode** (below).
 
 ### Public demo mode (`DEMO_MODE`, default on Vercel)
@@ -68,6 +88,7 @@ All keys live in the root [`.env.example`](../../.env.example). Copy it to `.env
 | `DEMO_MODE` | `true` on Vercel, otherwise `false` | |
 | `DEMO_ALLOW_UPLOADS` | false | |
 | `TRUST_PROXY` | `true` on Vercel | |
+| `APP_URL` | none locally; the production domain on Vercel | Public URL used in e-mail links (applied while the stored setting is still the localhost default) |
 | `ALLOWED_ORIGINS` | localhost list | Only when the frontend is on another origin |
 | `VITE_API_PROXY_TARGET` | `http://localhost:5000` | Dev proxy |
 | `VITE_API_BASE_URL` | `/api` | Only when the API is on another origin |

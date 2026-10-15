@@ -3,4 +3,6 @@ Allow: /
 Disallow: /app/
 Disallow: /api/
 
+Sitemap: https://allocate.habibullah.dev/sitemap.xml
+
 # Crafted by MD. Habibullah Sharif · https://habibullah.dev

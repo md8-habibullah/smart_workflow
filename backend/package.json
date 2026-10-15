@@ -18,6 +18,7 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
+    "build": "node scripts/copy-wasm.js",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/config/seed.js",

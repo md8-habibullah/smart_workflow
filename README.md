@@ -12,10 +12,12 @@
 [![SQLite](https://img.shields.io/badge/SQLite-sql.js%20%28WASM%29-003B57?logo=sqlite&logoColor=white)](https://sql.js.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen?logo=jest&logoColor=white)](#testing)
-[![Vercel](https://img.shields.io/badge/deploy-Vercel-000000?logo=vercel&logoColor=white)](#deploy-to-vercel)
+[![Live demo](https://img.shields.io/badge/live%20demo-allocate.habibullah.dev-039855?logo=vercel&logoColor=white)](https://allocate.habibullah.dev)
 [![License](https://img.shields.io/badge/license-ISC-blue)](#license)
 
 A university full-stack project: an Express REST API on an embedded SQLite database, a React single-page app, and 157 integration tests. One repository, one `npm install`, one `.env`, deployable as a single Vercel project.
+
+**[▶ Try the live demo at allocate.habibullah.dev](https://allocate.habibullah.dev)** (sign in with any demo account, password `password123`)
 
 <img src="frontend/public/screenshots/dashboard.jpg" alt="Admin dashboard with KPIs, needs-attention list and 14-day trend" width="100%">
 
@@ -213,7 +215,7 @@ Then open **http://localhost:5000**. For a real deployment, set `NODE_ENV=produc
 
 ## Deploy to Vercel
 
-The repository deploys as **one Vercel project**: the CDN serves the React build and `/api/*` goes to one serverless function ([`api/index.mjs`](api/index.mjs), the same Express app). `vercel.json` already holds the install, build, function and SPA-routing settings.
+The repository deploys as **one Vercel project with two [services](https://vercel.com/docs/services)** declared in `vercel.json`: `frontend` (the Vite build, served from the CDN, with an `index.html` fallback for client-side routes) and `backend` (the Express app in `backend/src/app.js`, run as a serverless function). Requests to `/api/*` go to `backend`; everything else goes to `frontend`. Both share one domain, so there is no CORS setup.
 
 1. Push the repository to GitHub and import it in Vercel (**Add New → Project**). Keep the repo root as the root directory and the framework preset "Other".
 2. Optional: add a `JWT_SECRET` environment variable.
@@ -281,7 +283,7 @@ flowchart LR
 | **Services** | Business rules: the allocation engine (with the pure, dependency-free scoring core `allocationScoring.js`), the task state machine, authentication and password reset, e-mail delivery. Multi-step changes run in **one transaction**. |
 | **Repositories** | All SQL lives here, always with bound parameters. |
 | **sql.js queue** | sql.js keeps the whole database in memory. One exclusive queue makes sure an async transaction never interleaves with another request. After each committed write, the database is saved to disk atomically (write a temp file, then rename it). |
-| **Mail worker** | Started by `server.js`. It wakes when a message is queued and also polls every 15 s for retries. On Vercel there are no timers: `api/index.mjs` delivers queued mail right after it is queued. |
+| **Mail worker** | Started by `server.js`. It wakes when a message is queued and also polls every 15 s for retries. On Vercel there are no timers: `app.js` switches to delivering queued mail right after it is queued. |
 
 ---
 
@@ -655,7 +657,6 @@ smart_workflow/
 ├── package-lock.json        # the only lockfile
 ├── .env.example             # the only config template (copy to .env, git-ignored)
 ├── vercel.json              # Vercel: build, API function, SPA routing
-├── api/index.mjs            # Vercel serverless entry: exports the Express app
 ├── setup.bat                # Windows one-click install (npm install)
 ├── backend/
 │   ├── data/                # smart_workflow.db (+ backups/ before migrations)
@@ -707,7 +708,6 @@ Run everything from the repository root. The root `package.json` is an npm works
 | `npm run db:status` | Show the database schema version and pending migrations |
 | `npm run db:migrate` | Back up the database and apply pending migrations |
 | `npm run db:reset` | Wipe and reseed the database |
-| `npm run vercel-build` | Alias of `build` for Vercel |
 
 A single workspace can be targeted with `-w`, e.g. `npm run dev -w backend` or `npm run preview -w frontend`. Requires Node.js 20 or newer.
 

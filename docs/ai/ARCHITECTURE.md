@@ -24,7 +24,7 @@ flowchart LR
 
 - **Development:** Vite serves the React app on `:5173` and proxies `/api` to Express on `:5000`, so there is no CORS friction.
 - **Production (single server):** `npm run build` writes `frontend/dist`; Express detects it and serves the SPA from `:5000` with an `index.html` fallback for client-side routes. One process, one port.
-- **Vercel:** the CDN serves `frontend/dist`; `/api/*` is rewritten to one serverless function, [`api/index.mjs`](../../api/index.mjs), which exports the same Express app and calls `enableOnDemandDelivery()` (no background timers on serverless). `VERCEL=1` switches on public demo mode (in-memory DB seeded per cold start). See [DEPLOYMENT.md](DEPLOYMENT.md).
+- **Vercel:** two [services](https://vercel.com/docs/services) in `vercel.json`. `frontend` is the Vite build on the CDN, with an `index.html` fallback. `backend` is the Express app (`backend/src/app.js`) as a serverless function, which calls `enableOnDemandDelivery()` when `VERCEL` is set (no background timers on serverless). `/api/*` routes to `backend` and keeps its `/api` prefix. `VERCEL=1` switches on public demo mode (in-memory DB seeded per cold start). See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## 2. Backend layers
 
@@ -107,7 +107,6 @@ smart_workflow/
 ├── package-lock.json       # the only lockfile
 ├── .env.example            # the only config template (copy to .env)
 ├── vercel.json             # Vercel build, function, rewrites
-├── api/index.mjs           # Vercel serverless entry (exports the Express app)
 ├── backend/
 │   ├── src/
 │   │   ├── app.js          # express app (also serves frontend/dist in single-server mode)

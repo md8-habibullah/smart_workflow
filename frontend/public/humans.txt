@@ -5,6 +5,7 @@ GitHub: https://github.com/md8-habibullah
 
 /* PROJECT */
 Name: Smart Workforce & Task Allocation System
+Live: https://allocate.habibullah.dev
 Source: https://github.com/md8-habibullah/smart_workflow
 Standards: HTML5, CSS3, ES2023
 Components: React, Vite, TanStack Query, Tailwind CSS, Express, SQLite (sql.js)

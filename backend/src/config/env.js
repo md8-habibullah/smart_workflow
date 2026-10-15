@@ -58,6 +58,10 @@ export const env = {
   PASSWORD_RESET_TTL_MINUTES: Number(process.env.PASSWORD_RESET_TTL_MINUTES) || 30,
   // Behind a reverse proxy / CDN (Vercel) the client IP comes from X-Forwarded-For.
   TRUST_PROXY: process.env.TRUST_PROXY ? process.env.TRUST_PROXY === 'true' : IS_VERCEL,
+  // Public URL used in e-mail links. Vercel exposes the production domain (custom domain once added).
+  APP_URL:
+    process.env.APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null),
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.0.2.2:5000']

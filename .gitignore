@@ -21,6 +21,9 @@ coverage/
 # Vercel CLI
 .vercel
 
+# SQLite WebAssembly copied by the backend build (npm run build -w backend)
+backend/src/config/sql-wasm.wasm
+
 # SQLite atomic-write temp file and automatic pre-migration backups
 backend/data/*.tmp
 backend/data/backups/
@@ -34,3 +37,6 @@ backend/uploads/
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+.vercel
+.env*

@@ -23,11 +23,15 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import { apiRateLimiter } from './middleware/rateLimiters.js';
 import { serveAvatar } from './controllers/attachmentController.js';
+import { enableOnDemandDelivery } from './services/mailService.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { TOTAL_COUNT_HEADER } from './utils/pagination.js';
 
 const app = express();
+
+// Serverless (Vercel): no background timers between requests, so queued e-mail is sent right after it is queued.
+if (IS_VERCEL) enableOnDemandDelivery();
 
 app.disable('x-powered-by');
 // Correct client IPs (rate limiting) behind Vercel or another reverse proxy.
