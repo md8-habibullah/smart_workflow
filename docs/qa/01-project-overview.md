@@ -92,7 +92,7 @@ npm install     # one npm workspace: installs backend and frontend
 npm run dev     # API on :5000 and React on :5173
 ```
 There is one lockfile and one optional config file, the root `.env` (template `.env.example`). The same repo also deploys to Vercel as a public demo.
-Open http://localhost:5173 and sign in, for example as `admin@smartworkflow.org` / `password123`. On first start, the database file is created, migrated and filled with demo data automatically ([db.js](../../backend/src/config/db.js) lines 66–83).
+Open http://localhost:5173 and sign in, for example as `admin@allocate.habibullah.dev` / `password123`. On first start, the database file is created, migrated and filled with demo data automatically ([db.js](../../backend/src/config/db.js) lines 66–83).
 
 ### Q: What demo data does the system contain?
 **[Basic]** [seedData.js](../../backend/src/config/seedData.js) creates 9 users (1 super admin, 1 admin, 7 employees, one of them `PENDING`), 4 departments, 11 skills, 3 projects (one is members-only), and 15 tasks in every status. This includes an overdue task (task 8), a task nobody is qualified for (task 10, "Video Editing"), and 6 completed tasks with work logs, comments and history. Dates are relative to "now" (`'+5 days'`), so the demo always looks fresh.
@@ -119,7 +119,7 @@ Open http://localhost:5173 and sign in, for example as `admin@smartworkflow.org`
 - Committed Playwright end-to-end tests in CI.
 
 ### Q: How big is the project?
-**[Basic]** About 6,000 lines of backend source (65 files in `backend/src`), about 1,750 lines of tests (157 integration tests in 12 test files), and about 9,700 lines of React code in 56 files. The database has 18 tables after 5 migrations.
+**[Basic]** About 6,000 lines of backend source (65 files in `backend/src`), about 1,750 lines of tests (161 integration tests in 13 test files), and about 9,700 lines of React code in 56 files. The database has 18 tables after 6 migrations.
 
 ### Q: What did you personally learn from this project?
 **[Basic]** (Adapt to your own experience.) Good points to mention: designing a layered backend; why transactions matter (and how a shared connection breaks them); writing a state machine; designing a fair, explainable scoring function; secure password and token handling; the transactional outbox pattern for e-mail; writing integration tests that catch real bugs (for example the login backdoor and the privilege-escalation bug).

@@ -63,7 +63,7 @@ Serverless functions have a read-only disk and run as several short-lived copies
 | Concern | Behaviour |
 | --- | --- |
 | **Database** | Always in memory on Vercel (`DB_FILE` is ignored there). Each cold start seeds fresh demo data, with dates relative to "now", so the demo never looks stale. Visitors can create, assign, comment and so on, but changes are **temporary**. They vanish when the instance is recycled, and two parallel instances don't share changes. |
-| **Built-in accounts** | Accounts on the `@smartworkflow.org` domain can't have their password, role, status or profile changed, and never receive reset links. Nobody can lock other visitors out. Accounts that visitors register themselves are fully manageable. |
+| **Built-in accounts** | Accounts on the `@allocate.habibullah.dev` domain can't have their password, role, status or profile changed, and never receive reset links. Nobody can lock other visitors out. Accounts that visitors register themselves are fully manageable. |
 | **E-mail** | Forced to the **LOG** transport; SMTP is refused. Nothing is ever sent. Messages are visible in the outbox, and delivery happens on demand, since there are no background timers. |
 | **Uploads** | Off by default (a public upload box invites abuse). Set `DEMO_ALLOW_UPLOADS=true` to enable them. Files then go to the temp dir and are limited to 4 MB by Vercel's request size limit. |
 | **Proxy** | `trust proxy` is on, so rate limits see the real client IP. |
@@ -90,7 +90,8 @@ All keys live in the root [`.env.example`](../../.env.example). Copy it to `.env
 | `TRUST_PROXY` | `true` on Vercel | |
 | `APP_URL` | none locally; the production domain on Vercel | Public URL used in e-mail links (applied while the stored setting is still the localhost default) |
 | `ALLOWED_ORIGINS` | localhost list | Only when the frontend is on another origin |
-| `VITE_API_PROXY_TARGET` | `http://localhost:5000` | Dev proxy |
+| `VITE_API_PROXY_TARGET` | `http://localhost:${PORT}` | Dev proxy; follows `PORT` automatically |
+| `VITE_DEV_PORT` | 5173 | Preferred Vite dev port; if busy, Vite moves to 5174, 5175… (all of them work) |
 | `VITE_API_BASE_URL` | `/api` | Only when the API is on another origin |
 
 ## Checks before pushing

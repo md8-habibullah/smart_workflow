@@ -11,7 +11,7 @@ const BASE = {
   smtpSecure: false,
   smtpUser: '',
   fromName: 'Smart Workforce',
-  fromEmail: 'no-reply@smartworkflow.org',
+  fromEmail: 'no-reply@allocate.habibullah.dev',
   replyTo: '',
   appUrl: 'http://localhost:5173',
   disabledEvents: []

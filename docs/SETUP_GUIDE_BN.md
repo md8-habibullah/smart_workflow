@@ -69,8 +69,8 @@ flutter run
 ## ৩য় ধাপ: টেস্ট অ্যাকাউন্টসমূহ (Login Credentials)
 
 - **Administrator Login:**
-  - Email: `admin@smartworkflow.org`
+  - Email: `admin@allocate.habibullah.dev`
   - Password: `password123`
 - **Employee Login:**
-  - Email: `john.doe@smartworkflow.org`
+  - Email: `john.doe@allocate.habibullah.dev`
   - Password: `password123`

@@ -262,7 +262,7 @@ const migrations = [
         smtp_user TEXT NULL,
         smtp_password_enc TEXT NULL,
         from_name TEXT NOT NULL DEFAULT 'Smart Workforce',
-        from_email TEXT NOT NULL DEFAULT 'no-reply@smartworkflow.org',
+        from_email TEXT NOT NULL DEFAULT 'no-reply@allocate.habibullah.dev',
         reply_to TEXT NULL,
         app_url TEXT NOT NULL DEFAULT 'http://localhost:5173',
         disabled_events TEXT NOT NULL DEFAULT '[]',
@@ -310,6 +310,32 @@ const migrations = [
     if (!userColumns.includes('password_changed_at')) {
       db.exec('ALTER TABLE users ADD COLUMN password_changed_at TEXT NULL');
     }
+  },
+
+  // 6 — the built-in accounts moved from the old, unowned demo domain to @allocate.habibullah.dev
+  (db) => {
+    const OLD = '@smartworkflow.org';
+    const NEW = '@allocate.habibullah.dev';
+    // Skips an address whose new form is already taken, so the UNIQUE email index can't fail.
+    db.run(
+      `UPDATE users SET email = SUBSTR(email, 1, LENGTH(email) - ?) || ?
+       WHERE LOWER(email) LIKE ?
+         AND NOT EXISTS (SELECT 1 FROM users other
+                         WHERE LOWER(other.email) = LOWER(SUBSTR(users.email, 1, LENGTH(users.email) - ?) || ?))`,
+      [OLD.length, NEW, `%${OLD}`, OLD.length, NEW]
+    );
+    for (const [table, column] of [
+      ['email_settings', 'from_email'],
+      ['email_settings', 'reply_to'],
+      ['email_outbox', 'to_email']
+    ]) {
+      db.run(`UPDATE ${table} SET ${column} = SUBSTR(${column}, 1, LENGTH(${column}) - ?) || ? WHERE LOWER(${column}) LIKE ?`, [
+        OLD.length,
+        NEW,
+        `%${OLD}`
+      ]);
+    }
+    db.run('UPDATE email_outbox SET text_body = REPLACE(text_body, ?, ?), html_body = REPLACE(html_body, ?, ?)', [OLD, NEW, OLD, NEW]);
   }
 ];
 

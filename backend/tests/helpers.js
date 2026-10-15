@@ -2,14 +2,14 @@ import request from 'supertest';
 import app from '../src/app.js';
 
 export const ACCOUNTS = {
-  superAdmin: 'superadmin@smartworkflow.org',
-  admin: 'admin@smartworkflow.org',
-  john: 'john.doe@smartworkflow.org', // employee 3, backend developer
-  jane: 'jane.smith@smartworkflow.org', // employee 4, designer
-  alex: 'alex.jones@smartworkflow.org', // employee 5, flutter
-  rahim: 'rahim.uddin@smartworkflow.org', // employee 7, QA
-  nusrat: 'nusrat.jahan@smartworkflow.org', // employee 8, full-stack
-  pending: 'sarah.khan@smartworkflow.org' // user 6, pending approval
+  superAdmin: 'superadmin@allocate.habibullah.dev',
+  admin: 'admin@allocate.habibullah.dev',
+  john: 'john.doe@allocate.habibullah.dev', // employee 3, backend developer
+  jane: 'jane.smith@allocate.habibullah.dev', // employee 4, designer
+  alex: 'alex.jones@allocate.habibullah.dev', // employee 5, flutter
+  rahim: 'rahim.uddin@allocate.habibullah.dev', // employee 7, QA
+  nusrat: 'nusrat.jahan@allocate.habibullah.dev', // employee 8, full-stack
+  pending: 'sarah.khan@allocate.habibullah.dev' // user 6, pending approval
 };
 
 const tokenCache = new Map();

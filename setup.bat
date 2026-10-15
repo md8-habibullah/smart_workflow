@@ -23,6 +23,6 @@ echo   Production (single server on :5000):
 echo       npm run build
 echo       npm start
 echo.
-echo   Demo login: admin@smartworkflow.org / password123
+echo   Demo login: admin@allocate.habibullah.dev / password123
 echo =======================================================
 pause

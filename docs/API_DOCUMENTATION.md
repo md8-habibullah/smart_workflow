@@ -12,7 +12,7 @@ Base URL: `http://localhost:5000/api` (Android Emulator: `http://10.0.2.2:5000/a
 ```json
 {
   "fullName": "John Doe",
-  "email": "john.doe@smartworkflow.org",
+  "email": "john.doe@allocate.habibullah.dev",
   "password": "password123",
   "confirmPassword": "password123",
   "jobPosition": "Software Engineer",
@@ -39,7 +39,7 @@ Base URL: `http://localhost:5000/api` (Android Emulator: `http://10.0.2.2:5000/a
 - **Request Body:**
 ```json
 {
-  "email": "admin@smartworkflow.org",
+  "email": "admin@allocate.habibullah.dev",
   "password": "password123"
 }
 ```
@@ -51,7 +51,7 @@ Base URL: `http://localhost:5000/api` (Android Emulator: `http://10.0.2.2:5000/a
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": 1,
-      "email": "admin@smartworkflow.org",
+      "email": "admin@allocate.habibullah.dev",
       "role": "ADMIN",
       "approvalStatus": "APPROVED"
     }

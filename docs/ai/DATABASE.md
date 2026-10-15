@@ -59,6 +59,7 @@ All foreign keys are enforced (`PRAGMA foreign_keys = ON`). Deleting a task casc
 | 3 | `users.avatar_file`; `attachments` table + index (file uploads) |
 | 4 | `users.password_changed_at` (session revocation); `email_settings` (single row, id = 1), `email_outbox` (+ status/next-attempt index), `password_resets` (SHA-256 token hashes) |
 | 5 | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (no-op otherwise) |
+| 6 | Moves the built-in demo accounts (and the default sender address) to `@allocate.habibullah.dev`; skips an address whose new form already exists |
 
 **Adding a change:** append a new function to `migrations`, never edit a released one. `GET /api/health` reports `schemaVersion`.
 
@@ -90,8 +91,8 @@ Created automatically when the `users` table is empty, or on demand with `npm ru
 
 | Email | Role | Notes |
 | --- | --- | --- |
-| superadmin@smartworkflow.org | Super Admin | |
-| admin@smartworkflow.org | Admin | |
+| superadmin@allocate.habibullah.dev | Super Admin | |
+| admin@allocate.habibullah.dev | Admin | |
 | john.doe@ | Employee | Backend: JS/Node expert |
 | jane.smith@ | Employee | Designer |
 | alex.jones@ | Employee | Flutter/Dart |

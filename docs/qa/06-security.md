@@ -231,7 +231,7 @@ Code: [authService.js](../../backend/src/services/authService.js) lines 164–20
 ## Public demo mode
 
 ### Q: The Vercel demo lets anyone sign in as admin. How do you stop visitors from locking each other out?
-**[Hard]** Demo mode (`isDemoMode()` in [env.js](../../backend/src/config/env.js), default on Vercel) adds guards in [utils/demo.js](../../backend/src/utils/demo.js). For the built-in accounts (e-mail ending `@smartworkflow.org`) the API refuses with **403** "Public demo: …": changing the password (self or by an admin), changing the role, deactivating, editing the profile; and forgot-password never issues reset links for them (anyone could read the outbox). Accounts that visitors register themselves are fully manageable. Everything else (tasks, allocation, approvals) works normally, and the in-memory database is reseeded on every cold start, so damage is temporary. Tested in [demo.test.js](../../backend/tests/demo.test.js).
+**[Hard]** Demo mode (`isDemoMode()` in [env.js](../../backend/src/config/env.js), default on Vercel) adds guards in [utils/demo.js](../../backend/src/utils/demo.js). For the built-in accounts (e-mail ending `@allocate.habibullah.dev`) the API refuses with **403** "Public demo: …": changing the password (self or by an admin), changing the role, deactivating, editing the profile; and forgot-password never issues reset links for them (anyone could read the outbox). Accounts that visitors register themselves are fully manageable. Everything else (tasks, allocation, approvals) works normally, and the in-memory database is reseeded on every cold start, so damage is temporary. Tested in [demo.test.js](../../backend/tests/demo.test.js).
 
 ### Q: What else is switched off in demo mode, and why?
 **[Intermediate]**

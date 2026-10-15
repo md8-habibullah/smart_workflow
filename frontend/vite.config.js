@@ -9,18 +9,20 @@ const ENV_DIR = '..'
 // In development every /api request is proxied to the Express backend, so the
 // frontend can use relative URLs and never deals with CORS.
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, ENV_DIR, 'VITE_')
+  // Read every key here (config only, never sent to the browser) so the proxy follows the backend's PORT.
+  const env = { ...loadEnv(mode, ENV_DIR, ''), ...process.env }
+  const apiTarget = env.VITE_API_PROXY_TARGET || `http://localhost:${env.PORT || 5000}`
+  const proxy = { '/api': { target: apiTarget, changeOrigin: true } }
   return {
     envDir: ENV_DIR,
     plugins: [react(), tailwindcss()],
     server: {
-      port: 5173,
-      proxy: {
-        '/api': {
-          target: process.env.VITE_API_PROXY_TARGET || env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
-          changeOrigin: true,
-        },
-      },
+      // Preferred port; if it is busy Vite moves on to the next free one (5174, 5175…). All of them work.
+      port: Number(env.VITE_DEV_PORT) || 5173,
+      strictPort: false,
+      proxy,
     },
+    // `npm run preview -w frontend` uses the same proxy.
+    preview: { port: Number(env.VITE_PREVIEW_PORT) || 4173, strictPort: false, proxy },
   }
 })

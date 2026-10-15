@@ -19,10 +19,10 @@ These documents describe the system **as it is built now**: an Express + SQLite 
 
 - **Purpose:** assign tasks to the best-suited team member using skills, deadlines (an earliest-deadline-first schedule simulation), workload, focus and fairness, then track the work through review to completion. A batch planner (**Auto-allocate**) can share out every pending task at once.
 - **Roles:** `SUPER_ADMIN`, `ADMIN` (manage everything) and `EMPLOYEE` (sees and works on their own tasks). Self-registered accounts need admin approval. Super admins also configure global e-mail (SMTP or log-only) for notifications and password resets.
-- **Backend:** Node.js / Express, Zod validation, JWT auth, `sql.js` (SQLite compiled to WebAssembly, persisted to `backend/data/*.db`, schema v5). Optional `limit`/`offset` pagination, JSON errors for every failure. 157 integration tests in 12 files.
+- **Backend:** Node.js / Express, Zod validation, JWT auth, `sql.js` (SQLite compiled to WebAssembly, persisted to `backend/data/*.db`, schema v6). Optional `limit`/`offset` pagination, JSON errors for every failure. 161 integration tests in 13 files.
 - **Frontend:** React 19 + Vite, React Router, TanStack Query (infinite lists), Tailwind CSS v4, Recharts, error boundaries and an offline/server banner.
 - **Repository:** npm workspaces (`backend`, `frontend`), one `package-lock.json`, one root `.env` (template `.env.example`).
-- **Run it:** `npm install` once, then `npm run dev`, and open http://localhost:5173 and sign in as `admin@smartworkflow.org` / `password123`.
+- **Run it:** `npm install` once, then `npm run dev`, and open http://localhost:5173 and sign in as `admin@allocate.habibullah.dev` / `password123`.
 - **Deploy:** import the repo in Vercel; it runs as a public demo with an in-memory database ([DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ---

@@ -14,11 +14,11 @@ ON DUPLICATE KEY UPDATE name=VALUES(name);
 -- 2. Insert Users (Admin & Employees)
 -- Passwords below are hashed representations for 'password123' using bcrypt ($2b$10$...)
 INSERT INTO users (id, email, password_hash, role, approval_status, is_active, approved_at) VALUES
-(1, 'admin@smartworkflow.org', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'ADMIN', 'APPROVED', TRUE, NOW()),
-(2, 'john.doe@smartworkflow.org', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
-(3, 'jane.smith@smartworkflow.org', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
-(4, 'alex.jones@smartworkflow.org', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
-(5, 'sarah.khan@smartworkflow.org', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'PENDING', TRUE, NULL)
+(1, 'admin@allocate.habibullah.dev', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'ADMIN', 'APPROVED', TRUE, NOW()),
+(2, 'john.doe@allocate.habibullah.dev', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
+(3, 'jane.smith@allocate.habibullah.dev', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
+(4, 'alex.jones@allocate.habibullah.dev', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'APPROVED', TRUE, NOW()),
+(5, 'sarah.khan@allocate.habibullah.dev', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3vjPGga31lW', 'EMPLOYEE', 'PENDING', TRUE, NULL)
 ON DUPLICATE KEY UPDATE email=VALUES(email);
 
 -- 3. Insert Employees

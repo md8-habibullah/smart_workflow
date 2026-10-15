@@ -19,7 +19,7 @@ Optional: copy `.env.example` to `.env`. Every key has a development default, so
 npm run dev            # API on http://localhost:5000 + React on http://localhost:5173
 ```
 
-Open http://localhost:5173 and sign in as `admin@smartworkflow.org` / `password123` (or use the demo buttons on the login page).
+Open http://localhost:5173 and sign in as `admin@allocate.habibullah.dev` / `password123` (or use the demo buttons on the login page).
 
 Run the halves separately if you prefer: `npm run dev -w backend` and `npm run dev -w frontend`.
 
@@ -40,7 +40,7 @@ Import the repository in Vercel with the repo root as the root directory; `verce
 
 | Command | Effect |
 | --- | --- |
-| *(automatic)* | Creates `backend/data/smart_workflow.db`, runs migrations (schema v5), seeds demo data if empty |
+| *(automatic)* | Creates `backend/data/smart_workflow.db`, runs migrations (schema v6), seeds demo data if empty |
 | `npm run db:status` | Read-only check: schema version, pending migrations |
 | `npm run db:migrate` | Back up the file, apply pending migrations, print table counts |
 | `npm run db:reset` | **Wipes** the database and reseeds demo data |
@@ -49,7 +49,7 @@ Import the repository in Vercel with the repo root as the root directory; `verce
 ## Tests & quality
 
 ```bash
-npm test               # backend: 157 Jest + supertest integration tests in 12 files (in-memory DB, temp upload folder)
+npm test               # backend: 161 Jest + supertest integration tests in 13 files (in-memory DB, temp upload folder)
 npm run lint           # frontend: oxlint
 npm run build          # frontend production build (catches import/JSX errors)
 npm run check          # all three: run before pushing
@@ -76,7 +76,8 @@ The template is [`.env.example`](../../.env.example). Variables already set in t
 | `DEMO_MODE` | `true` on Vercel, else `false` | Public demo mode |
 | `DEMO_ALLOW_UPLOADS` | false | Allow uploads in demo mode |
 | `TRUST_PROXY` | `true` on Vercel | Trust `X-Forwarded-For` for client IPs |
-| `VITE_API_PROXY_TARGET` | `http://localhost:5000` | Vite dev proxy target |
+| `VITE_API_PROXY_TARGET` | `http://localhost:${PORT}` | Vite dev proxy target; follows `PORT` automatically |
+| `VITE_DEV_PORT` | 5173 | Preferred Vite dev port; if busy, Vite moves to 5174, 5175… (all of them work) |
 | `VITE_API_BASE_URL` | `/api` | API URL for separately hosted builds |
 
 ## Troubleshooting
@@ -84,7 +85,7 @@ The template is [`.env.example`](../../.env.example). Variables already set in t
 | Symptom | Fix |
 | --- | --- |
 | UI says "Cannot reach the server" / banner "Can't reach the server" | Start the backend (`npm run dev` at the root starts both) |
-| `Port 5000 is already in use` | Stop the other process or set `PORT` (and `VITE_API_PROXY_TARGET`) in the root `.env` |
+| `Port 5000 is already in use` | Stop the other process or set another `PORT` (e.g. 5001) in the root `.env`; the Vite proxy follows it |
 | Built app shows React development warnings or is unexpectedly slow | `NODE_ENV` is in `.env`. Vite reads the same file and bundles React's development build. Remove it and let the host/script set it |
 | Old `backend/.env` or `frontend/.env.local` seems ignored | Only the root `.env` is read now. Move the keys there |
 | Demo login fails on an old database | Restart once: migration 2 repairs legacy passwords. Or `npm run db:reset` |

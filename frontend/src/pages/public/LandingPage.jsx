@@ -251,7 +251,7 @@ export default function LandingPage() {
             </div>
             {!signedIn && (
               <p className="mt-5 text-sm text-slate-500">
-                Demo login: <code className="rounded bg-white px-1.5 py-0.5 font-semibold text-slate-800 ring-1 ring-slate-200">admin@smartworkflow.org</code> /{' '}
+                Demo login: <code className="rounded bg-white px-1.5 py-0.5 font-semibold text-slate-800 ring-1 ring-slate-200">admin@allocate.habibullah.dev</code> /{' '}
                 <code className="rounded bg-white px-1.5 py-0.5 font-semibold text-slate-800 ring-1 ring-slate-200">password123</code>
               </p>
             )}

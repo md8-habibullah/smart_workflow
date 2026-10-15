@@ -47,7 +47,7 @@ The Flutter client was mostly a static mock-up:
 | Medium | Race on the "last active super admin" rule: `changeRole` / `setActive` counted super admins **before** the update, outside the transaction, so two super admins demoting each other at the same moment could leave none. | The count and the update run inside one `withTransaction` in [`adminController.js`](../../backend/src/controllers/adminController.js); the queue serialises them, so the second request gets 409. |
 ## Verification
 
-- Backend: `npm test`. **157 integration tests in 12 files** across auth, RBAC, full task lifecycle, allocation scoring and batch planning, CRUD, reports, notifications, file uploads, role management, e-mail outbox and password recovery, pagination, error handling and public demo mode, each file on a fresh in-memory database.
+- Backend: `npm test`. **161 integration tests in 13 files** across auth, RBAC, full task lifecycle, allocation scoring and batch planning, CRUD, reports, notifications, file uploads, role management, e-mail outbox and password recovery, pagination, error handling and public demo mode, each file on a fresh in-memory database.
 - `npm run check` runs the tests, the frontend lint and the production build in one go.
 - Legacy upgrade: a database created by the original code was opened by the new server; migration 2 ran, and demo logins work with the real password.
 - Frontend: production build passes; an automated browser run (Playwright) drives the real UI through login, every page, task creation, smart allocation, employee start/log/comment/submit, admin approval, and the mobile drawer.

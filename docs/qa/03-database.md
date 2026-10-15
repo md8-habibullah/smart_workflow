@@ -5,7 +5,7 @@ Related reading: [schema.js](../../backend/src/config/schema.js), [db.js](../../
 
 ---
 
-## Entity–relationship diagram (schema v5)
+## Entity–relationship diagram (schema v6)
 
 ```mermaid
 erDiagram
@@ -188,7 +188,7 @@ export const runMigrations = (db) => {
   }
 };
 ```
-Each pending migration runs in **its own transaction** together with the version bump, so a failed migration leaves the DB at the previous version. `SCHEMA_VERSION = migrations.length` (line 316), currently **5**.
+Each pending migration runs in **its own transaction** together with the version bump, so a failed migration leaves the DB at the previous version. `SCHEMA_VERSION = migrations.length` (line 316), currently **6**.
 
 ### Q: What does each migration do?
 **[Basic]**
@@ -200,6 +200,7 @@ Each pending migration runs in **its own transaction** together with the version
 | 3 | `users.avatar_file`, `attachments` table + index |
 | 4 | `users.password_changed_at`, `email_settings` (single row), `email_outbox`, `password_resets` |
 | 5 | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (a no-op on correct databases) |
+| 6 | Moves the built-in demo accounts (and the default sender address) to `@allocate.habibullah.dev`; skips an address whose new form already exists |
 
 *Why a repair migration?* Some databases ran an early build of migration 4 that did not add the column. Editing migration 4 would not help them (they are already at `user_version = 4` and never re-run it), so a new migration fixes them. That is the "never edit a released migration" rule in practice.
 

@@ -39,7 +39,7 @@ describe('Authentication', () => {
   });
 
   it('accepts emails case-insensitively', async () => {
-    const res = await api().post('/auth/login', { email: 'John.Doe@SmartWorkflow.org', password: 'password123' });
+    const res = await api().post('/auth/login', { email: 'John.Doe@Allocate.Habibullah.DEV', password: 'password123' });
     expect(res.statusCode).toBe(200);
   });
 

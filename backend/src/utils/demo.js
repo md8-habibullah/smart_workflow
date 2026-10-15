@@ -8,7 +8,7 @@ import { forbidden } from './errors.js';
  * are refused. Accounts that visitors register themselves are unaffected.
  */
 
-export const DEMO_ACCOUNT_DOMAIN = '@smartworkflow.org';
+export const DEMO_ACCOUNT_DOMAIN = '@allocate.habibullah.dev';
 
 export const isProtectedDemoAccount = (email) =>
   isDemoMode() && typeof email === 'string' && email.toLowerCase().endsWith(DEMO_ACCOUNT_DOMAIN);

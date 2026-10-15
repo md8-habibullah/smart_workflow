@@ -64,7 +64,12 @@ export const env = {
     (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null),
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.0.2.2:5000']
+    : [
+        'https://allocate.habibullah.dev',
+        ...[3000, 4173, 5000, 5001, 5173, 5174, 5175].flatMap((port) => [`http://localhost:${port}`, `http://127.0.0.1:${port}`]),
+        'http://10.0.2.2:5000',
+        'http://10.0.2.2:5001'
+      ]
 };
 
 export const isTest = NODE_ENV === 'test';

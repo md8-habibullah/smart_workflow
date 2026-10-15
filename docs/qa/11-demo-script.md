@@ -5,10 +5,10 @@ All demo accounts use the password **`password123`**.
 
 | Account | Role | Use it for |
 | --- | --- | --- |
-| `superadmin@smartworkflow.org` | Super Admin | e-mail settings, outbox, role changes |
-| `admin@smartworkflow.org` | Admin | allocation, Kanban approval, approvals |
-| `john.doe@smartworkflow.org` | Employee (backend dev) | employee view, work log, upload, submit |
-| `jane.smith@smartworkflow.org` | Employee (designer) | forgot-password flow |
+| `superadmin@allocate.habibullah.dev` | Super Admin | e-mail settings, outbox, role changes |
+| `admin@allocate.habibullah.dev` | Admin | allocation, Kanban approval, approvals |
+| `john.doe@allocate.habibullah.dev` | Employee (backend dev) | employee view, work log, upload, submit |
+| `jane.smith@allocate.habibullah.dev` | Employee (designer) | forgot-password flow |
 
 > Use **two browser windows**: a normal one for admin/super admin, and a private/incognito one for the employee. Each has its own `localStorage`, so both can stay logged in.
 
@@ -26,14 +26,14 @@ All demo accounts use the password **`password123`**.
    npm run dev
    ```
    Wait for "Listening on: http://0.0.0.0:5000" and the Vite URL `http://localhost:5173`.
-3. Open http://localhost:5173 in both windows. Check `http://localhost:5000/api/health` shows `"status":"UP"` and `"schemaVersion":5`.
-4. Optional: run `npm test` once in another terminal to show "157 passed" (it uses an in-memory DB, so it does not touch the demo data).
+3. Open http://localhost:5173 in both windows. Check `http://localhost:5000/api/health` shows `"status":"UP"` and `"schemaVersion":6`.
+4. Optional: run `npm test` once in another terminal to show "161 passed" (it uses an in-memory DB, so it does not touch the demo data).
 
 ---
 
 ## 1. Landing page and login (1 min) — normal window
 
-- Show the landing page, then **Sign in**. Use the **demo account** quick-login buttons, or type `admin@smartworkflow.org` / `password123`.
+- Show the landing page, then **Sign in**. Use the **demo account** quick-login buttons, or type `admin@allocate.habibullah.dev` / `password123`.
 - **Say:** "Passwords are hashed with bcrypt. The server returns a JWT that the browser sends on every request, and on every request the server re-checks the account in the database, so a deactivated user is blocked immediately."
 
 ## 2. Admin dashboard (1 min)
@@ -56,7 +56,7 @@ All demo accounts use the password **`password123`**.
 
 ## 4. Employee view, work log and file upload (2–3 min) — incognito window
 
-1. Log in as **`john.doe@smartworkflow.org`**. The menu is shorter ("My Tasks", "Profile & Skills"): role-based UI.
+1. Log in as **`john.doe@allocate.habibullah.dev`**. The menu is shorter ("My Tasks", "Profile & Skills"): role-based UI.
 2. **Say:** "John only sees his own tasks. Even if he changes the URL or the API query string, the server forces the filter to his employee id."
 3. Open **"Database Schema & Migration Setup"** (IN_PROGRESS) → **Work logs** tab → log e.g. 2 h for today.
    **Say:** "Only the current assignee can log work, and the server refuses more than 24 hours per person per day across all tasks."
@@ -76,7 +76,7 @@ All demo accounts use the password **`password123`**.
 
 ## 6. E-mail settings with the LOG transport (2 min) — log in as super admin
 
-1. Log out (normal window) and log in as **`superadmin@smartworkflow.org`**. A new menu section **System → E-mail settings** appears.
+1. Log out (normal window) and log in as **`superadmin@allocate.habibullah.dev`**. A new menu section **System → E-mail settings** appears.
 2. Turn **E-mail on**, keep transport **"Log only"**, **Save settings**.
    **Say:** "Settings are stored in the database so the super admin can change them at runtime. A real SMTP password would be encrypted with AES-256-GCM and is never returned by the API. The LOG transport sends nothing outside the machine — safe for a demo."
 3. **Send test e-mail** to any address → toast "Test message logged … (LOG transport, nothing was sent)".
@@ -93,7 +93,7 @@ All demo accounts use the password **`password123`**.
 
 ## 8. Forgot-password flow (2 min) — requires step 6 (e-mail enabled)
 
-1. Incognito window: log out → **Forgot password?** → enter `jane.smith@smartworkflow.org` → message "If an account exists for that e-mail, a reset link is on its way."
+1. Incognito window: log out → **Forgot password?** → enter `jane.smith@allocate.habibullah.dev` → message "If an account exists for that e-mail, a reset link is on its way."
    **Say:** "The answer is identical for unknown e-mails, so nobody can discover accounts."
 2. Normal window (super admin) → **E-mail settings** → outbox → preview **"Reset your password"** → copy the button link (`http://localhost:5173/reset-password?token=…`).
 3. Paste it in the incognito window → choose a new password → sign in as Jane with it.
@@ -104,12 +104,12 @@ All demo accounts use the password **`password123`**.
 
 1. Open the Vercel URL on a phone or a second laptop. A small **"Public demo"** notice explains that data is temporary.
 2. Sign in with a demo button and show that allocation and the board work the same.
-3. Optional: as `superadmin@smartworkflow.org`, try to change John's role → 403 "Public demo: changing the role is disabled for the built-in demo accounts…".
+3. Optional: as `superadmin@allocate.habibullah.dev`, try to change John's role → 403 "Public demo: changing the role is disabled for the built-in demo accounts…".
 4. **Say:** "The same repository deploys as one Vercel project: the CDN serves the React build and one serverless function runs the same Express app. Serverless disks are read-only, so the demo runs with an in-memory database seeded on every cold start. Visitors can try everything, nothing is permanent, built-in accounts can't be locked, and e-mail is log-only. For a real deployment we use single-server mode on a disk, or a hosted database."
 
 ## 10. Closing line (15 s)
 
-"To summarise: explainable smart allocation with a batch planner, a strict workflow with audit history, safe file handling, e-mail through a transactional outbox, and 157 integration tests that check the security rules and the business rules."
+"To summarise: explainable smart allocation with a batch planner, a strict workflow with audit history, safe file handling, e-mail through a transactional outbox, and 161 integration tests that check the security rules and the business rules."
 
 ---
 
@@ -118,7 +118,7 @@ All demo accounts use the password **`password123`**.
 | Problem | Quick fix |
 | --- | --- |
 | Page says "Cannot reach the server" | The backend is not running. Run `npm run dev` from the repository root (it starts both API and UI). |
-| `Port 5000 is already in use` | Another server is running. Close it, or on Windows: `netstat -ano \| findstr :5000` then `taskkill /PID <pid> /F`. Or set `PORT` and `VITE_API_PROXY_TARGET` in the root `.env`. |
+| `Port 5000 is already in use` | Another server is running. Close it, or on Windows: `netstat -ano \| findstr :5000` then `taskkill /PID <pid> /F`. Or set `PORT=5001` in the root `.env`; the Vite proxy follows it automatically. |
 | Vite started on 5174 instead of 5173 | Port 5173 is busy (an old Vite). Use the URL Vite prints, or close the old one. Reset links use the "App URL" from e-mail settings (default `http://localhost:5173`) — adjust it if needed. |
 | Scores / tasks differ from the script | Data was changed by earlier practice. Stop the server, run `npm run db:reset`, start again. |
 | Demo login fails ("Invalid email or password") | Someone changed the password (e.g. the forgot-password step). Reset data as above. |
@@ -157,4 +157,4 @@ All demo accounts use the password **`password123`**.
 **[Intermediate]** Open [allocationScoring.js](../../backend/src/services/allocationScoring.js): `WEIGHTS` on lines 26–32, skill fit on lines 60–74, the EDF simulation and deadline fit on lines 90–130, workload/focus/fairness on lines 135–149, the weighted total in `scoreCandidate` on lines 158–177, and the batch planner `planBatch` on lines 214–305. [allocationEngine.js](../../backend/src/services/allocationEngine.js) loads the data and turns scores into warnings and insights.
 
 ### Q: How do you know all this still works after your last change?
-**[Basic]** Run `npm test`: 157 integration tests in 12 files, each test file on a fresh in-memory database, covering access control, workflow, allocation and batch planning, uploads, e-mail and password reset, pagination, error handling and demo mode. `npm run check` also runs the frontend lint and production build.
+**[Basic]** Run `npm test`: 161 integration tests in 13 files, each test file on a fresh in-memory database, covering access control, workflow, allocation and batch planning, uploads, e-mail and password reset, pagination, error handling and demo mode. `npm run check` also runs the frontend lint and production build.

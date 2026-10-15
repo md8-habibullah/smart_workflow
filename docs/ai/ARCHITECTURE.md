@@ -132,7 +132,7 @@ smart_workflow/
 
 - Passwords hashed with bcrypt (`bcryptjs`, 10 rounds); timing-safe dummy compare for unknown emails.
 - JWT secret required (≥ 32 chars) when `NODE_ENV=production`, except in public demo mode, which falls back to a fixed demo secret (its accounts and passwords are public).
-- Public demo mode: built-in `@smartworkflow.org` accounts can't have their password, role, status or profile changed and get no reset links; SMTP is refused; uploads are off unless `DEMO_ALLOW_UPLOADS=true`.
+- Public demo mode: built-in `@allocate.habibullah.dev` accounts can't have their password, role, status or profile changed and get no reset links; SMTP is refused; uploads are off unless `DEMO_ALLOW_UPLOADS=true`.
 - `trust proxy` when `TRUST_PROXY` is on (default on Vercel), so rate limits use the real client IP.
 - 500 responses carry a `reference` id, never a stack trace outside development.
 - Helmet headers, JSON body size limit (100 kB), login/register rate limit (50 / 15 min), global API limit (600 / min).

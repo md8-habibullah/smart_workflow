@@ -16,7 +16,7 @@ const LOG_SETTINGS = {
   smtpPort: 587,
   smtpSecure: false,
   fromName: 'Smart Workforce',
-  fromEmail: 'no-reply@smartworkflow.org',
+  fromEmail: 'no-reply@allocate.habibullah.dev',
   appUrl: 'https://demo.example.com',
   disabledEvents: []
 };

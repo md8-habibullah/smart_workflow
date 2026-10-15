@@ -11,11 +11,11 @@
 [![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-sql.js%20%28WASM%29-003B57?logo=sqlite&logoColor=white)](https://sql.js.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen?logo=jest&logoColor=white)](#testing)
+[![Tests](https://img.shields.io/badge/tests-161%20passing-brightgreen?logo=jest&logoColor=white)](#testing)
 [![Live demo](https://img.shields.io/badge/live%20demo-allocate.habibullah.dev-039855?logo=vercel&logoColor=white)](https://allocate.habibullah.dev)
 [![License](https://img.shields.io/badge/license-ISC-blue)](#license)
 
-A university full-stack project: an Express REST API on an embedded SQLite database, a React single-page app, and 157 integration tests. One repository, one `npm install`, one `.env`, deployable as a single Vercel project.
+A university full-stack project: an Express REST API on an embedded SQLite database, a React single-page app, and 161 integration tests. One repository, one `npm install`, one `.env`, deployable as a single Vercel project.
 
 **[▶ Try the live demo at allocate.habibullah.dev](https://allocate.habibullah.dev)** (sign in with any demo account, password `password123`)
 
@@ -175,10 +175,10 @@ A university full-stack project: an Express REST API on an embedded SQLite datab
 - UI: **error boundaries** (whole app and per page), a 403 page for admin-only routes, an **offline / server-unreachable banner**, one toast for unexpected failures, a "session expired" message on 401, and an automatic one-time reload when a new deployment replaced the page's code chunks.
 
 ### 🛠️ Engineering
-- **Versioned database migrations** (currently **v5**). The database file is **backed up automatically** before every upgrade.
+- **Versioned database migrations** (currently **v6**). The database file is **backed up automatically** before every upgrade.
 - `npm run db:status`, `db:migrate` and `db:reset`.
 - Optional **pagination** (`limit`/`offset`, total in `X-Total-Count`) on every large list, backward compatible.
-- 157 Jest + supertest integration tests in 12 files, each test file using an in-memory database.
+- 161 Jest + supertest integration tests in 12 files, each test file using an in-memory database.
 
 ---
 
@@ -224,7 +224,7 @@ The repository deploys as **one Vercel project with two [services](https://verce
 On Vercel the app runs as a **public demo** (`DEMO_MODE`, on by default there):
 
 - The database is **always in memory** and is seeded on every cold start, so visitors can try everything, but **data is temporary** and parallel instances don't share changes.
-- E-mail is LOG-only (SMTP is refused), the built-in `@smartworkflow.org` accounts can't have their password, role, status or profile changed, and uploads are off unless `DEMO_ALLOW_UPLOADS=true`.
+- E-mail is LOG-only (SMTP is refused), the built-in `@allocate.habibullah.dev` accounts can't have their password, role, status or profile changed, and uploads are off unless `DEMO_ALLOW_UPLOADS=true`.
 - A small "Public demo" notice is shown in the app and on the login page.
 
 For a permanent deployment, use single-server mode on a host with a persistent disk. Details: [docs/ai/DEPLOYMENT.md](docs/ai/DEPLOYMENT.md).
@@ -237,15 +237,15 @@ Every seeded account uses the password **`password123`**. The login page also ha
 
 | Role | Name | Email | Notes |
 | --- | --- | --- | --- |
-| Super Admin | Chief Super Admin | `superadmin@smartworkflow.org` | Full control, role changes, e-mail settings |
-| Admin | System Administrator | `admin@smartworkflow.org` | Tasks, allocation, approvals, reports |
-| Employee | John Doe | `john.doe@smartworkflow.org` | Senior backend developer, one task in progress |
-| Employee | Jane Smith | `jane.smith@smartworkflow.org` | Lead UI/UX designer, work waiting for review |
-| Employee | Nusrat Jahan | `nusrat.jahan@smartworkflow.org` | Full-stack developer with free capacity |
-| Employee | Alex Jones | `alex.jones@smartworkflow.org` | Flutter mobile developer |
-| Employee | Rahim Uddin | `rahim.uddin@smartworkflow.org` | QA engineer (7 h/day capacity) |
-| Employee | Tanvir Ahmed | `tanvir.ahmed@smartworkflow.org` | Product analyst (6 h/day capacity) |
-| Employee | Sarah Khan | `sarah.khan@smartworkflow.org` | **Pending approval**: use it to try the approval flow |
+| Super Admin | Chief Super Admin | `superadmin@allocate.habibullah.dev` | Full control, role changes, e-mail settings |
+| Admin | System Administrator | `admin@allocate.habibullah.dev` | Tasks, allocation, approvals, reports |
+| Employee | John Doe | `john.doe@allocate.habibullah.dev` | Senior backend developer, one task in progress |
+| Employee | Jane Smith | `jane.smith@allocate.habibullah.dev` | Lead UI/UX designer, work waiting for review |
+| Employee | Nusrat Jahan | `nusrat.jahan@allocate.habibullah.dev` | Full-stack developer with free capacity |
+| Employee | Alex Jones | `alex.jones@allocate.habibullah.dev` | Flutter mobile developer |
+| Employee | Rahim Uddin | `rahim.uddin@allocate.habibullah.dev` | QA engineer (7 h/day capacity) |
+| Employee | Tanvir Ahmed | `tanvir.ahmed@allocate.habibullah.dev` | Product analyst (6 h/day capacity) |
+| Employee | Sarah Khan | `sarah.khan@allocate.habibullah.dev` | **Pending approval**: use it to try the approval flow |
 
 ---
 
@@ -426,7 +426,7 @@ sequenceDiagram
 ### Setting up Gmail
 
 1. Turn on **2-Step Verification** for the Google account, then create an **App password** (Google Account → Security → App passwords).
-2. In the app, sign in as `superadmin@smartworkflow.org` and open **Settings → E-mail settings**.
+2. In the app, sign in as `superadmin@allocate.habibullah.dev` and open **Settings → E-mail settings**.
 3. Choose **SMTP**, then click the **Gmail** preset (`smtp.gmail.com`, port 587, STARTTLS).
 4. Username = your Gmail address. Password = the 16-character app password. From address = the same Gmail address.
 5. Set **App URL** to where users open the app (`http://localhost:5173` in development, `http://localhost:5000` in single-server mode).
@@ -616,6 +616,7 @@ The schema version is stored in `PRAGMA user_version`. Each migration runs once,
 | **v3** | `users.avatar_file` and the `attachments` table (file uploads). |
 | **v4** | `users.password_changed_at` (session revocation), `email_settings` (one row), `email_outbox`, `password_resets`. |
 | **v5** | Repair: adds `users.password_changed_at` to databases that ran an early build of migration 4 (no-op otherwise). |
+| **v6** | Moves the built-in demo accounts (and the default sender address) to `@allocate.habibullah.dev`; skips an address whose new form already exists. |
 
 | Command | Effect |
 | --- | --- |
@@ -734,7 +735,8 @@ There is **one** config file for the whole repository: the root `.env` (copy [`.
 | `DEMO_MODE` | `true` on Vercel, else `false` | Public demo mode (see [Deploy to Vercel](#deploy-to-vercel)) |
 | `DEMO_ALLOW_UPLOADS` | `false` | Allow uploads in demo mode |
 | `TRUST_PROXY` | `true` on Vercel | Read the client IP from `X-Forwarded-For` behind a proxy |
-| `VITE_API_PROXY_TARGET` | `http://localhost:5000` | Vite dev proxy target |
+| `VITE_API_PROXY_TARGET` | `http://localhost:${PORT}` | Vite dev proxy target; follows `PORT` automatically |
+| `VITE_DEV_PORT` | 5173 | Preferred Vite dev port; if busy, Vite moves to 5174, 5175… (all of them work) |
 | `VITE_API_BASE_URL` | `/api` | API URL for a separately hosted frontend build |
 
 ---
@@ -746,7 +748,7 @@ npm test          # backend tests
 npm run check     # tests + frontend lint + production build
 ```
 
-- **157 integration tests** in 12 suites, written with **Jest + supertest**. They send real HTTP requests to the Express app.
+- **161 integration tests** in 12 suites, written with **Jest + supertest**. They send real HTTP requests to the Express app.
 - Each test file gets a fresh **in-memory** database seeded with the demo data, and a temporary upload folder. Your real `.db` file is never touched.
 - The rate limiters and the mail worker are turned off under test, so results are deterministic.
 
@@ -808,7 +810,7 @@ Frontend checks: `npm run lint` (oxlint) and `npm run build`. The frontend has n
 | Symptom | Fix |
 | --- | --- |
 | UI says "Cannot reach the server" | Start the backend. `npm run dev` at the root starts both halves. |
-| `Port 5000 is already in use` | Stop the other process, or set `PORT` and `VITE_API_PROXY_TARGET` in the root `.env`. |
+| `Port 5000 is already in use` | Stop the other process, or set another `PORT` (e.g. 5001) in the root `.env`; the Vite proxy follows it. |
 | Production build shows React development warnings | `NODE_ENV` was put in `.env`. Remove it; let the host or shell set it. |
 | On Vercel, my changes disappeared | Expected in demo mode: the database is in memory and reseeded on each cold start. |
 | "Public demo: … is disabled" (403) | Demo mode protects the built-in accounts and blocks SMTP and uploads. Register your own account, or set `DEMO_MODE=false` on a host with a persistent disk. |

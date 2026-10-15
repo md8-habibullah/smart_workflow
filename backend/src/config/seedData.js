@@ -10,15 +10,15 @@ export const DEMO_PASSWORD = 'password123';
 
 // [id, email, role, approval_status]
 const users = [
-  [1, 'superadmin@smartworkflow.org', 'SUPER_ADMIN', 'APPROVED'],
-  [2, 'admin@smartworkflow.org', 'ADMIN', 'APPROVED'],
-  [3, 'john.doe@smartworkflow.org', 'EMPLOYEE', 'APPROVED'],
-  [4, 'jane.smith@smartworkflow.org', 'EMPLOYEE', 'APPROVED'],
-  [5, 'alex.jones@smartworkflow.org', 'EMPLOYEE', 'APPROVED'],
-  [6, 'sarah.khan@smartworkflow.org', 'EMPLOYEE', 'PENDING'],
-  [7, 'rahim.uddin@smartworkflow.org', 'EMPLOYEE', 'APPROVED'],
-  [8, 'nusrat.jahan@smartworkflow.org', 'EMPLOYEE', 'APPROVED'],
-  [9, 'tanvir.ahmed@smartworkflow.org', 'EMPLOYEE', 'APPROVED']
+  [1, 'superadmin@allocate.habibullah.dev', 'SUPER_ADMIN', 'APPROVED'],
+  [2, 'admin@allocate.habibullah.dev', 'ADMIN', 'APPROVED'],
+  [3, 'john.doe@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED'],
+  [4, 'jane.smith@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED'],
+  [5, 'alex.jones@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED'],
+  [6, 'sarah.khan@allocate.habibullah.dev', 'EMPLOYEE', 'PENDING'],
+  [7, 'rahim.uddin@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED'],
+  [8, 'nusrat.jahan@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED'],
+  [9, 'tanvir.ahmed@allocate.habibullah.dev', 'EMPLOYEE', 'APPROVED']
 ];
 
 const departments = [

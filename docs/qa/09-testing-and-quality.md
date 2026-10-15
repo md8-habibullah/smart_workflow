@@ -1,6 +1,6 @@
 # 09 · Testing and Quality
 
-Test strategy, what the 157 backend tests cover, how to run them, and what is not tested.
+Test strategy, what the 161 backend tests cover, how to run them, and what is not tested.
 Tests live in [backend/tests/](../../backend/tests).
 
 ---
@@ -17,11 +17,12 @@ Tests live in [backend/tests/](../../backend/tests).
 | [email.test.js](../../backend/tests/email.test.js) | **16** | Super-admin only; validation; encrypted password never returned; nothing queued while disabled; notifications → outbox; disabled events; rollback sends nothing; test e-mail + SMTP error; retry/backoff/FAILED/manual retry; outbox list/preview/clear; rejected applicant mail; forgot password (503 when disabled, no enumeration, single use, old sessions revoked, newer link wins); change password returns fresh token |
 | [errors.test.js](../../backend/tests/errors.test.js) | **18** | Over HTTP (14): malformed JSON 400, body too large 413, bad charset 415, unknown route 404 JSON, wrong method 405 + `Allow` (also on nested routers), Zod 400 with fields, UNIQUE 409, invalid/missing JWT 401, forbidden role 403, malformed percent-encoding 400, invalid id 400, missing resource 404. Unit (4) on `errorHandler`: multer size 413, JWT errors 401, 500 with `reference` and no stack outside development, delegation when headers were already sent |
 | [health.test.js](../../backend/tests/health.test.js) | **1** | `GET /api/health` → 200 UP |
+| [migrations.test.js](../../backend/tests/migrations.test.js) | **4** | Migration 6 on a database seeded before it: reaches the latest version; demo accounts move to `@allocate.habibullah.dev` keeping the local part; an account whose new address is taken is left alone; sender address and outbox rewritten |
 | [pagination.test.js](../../backend/tests/pagination.test.js) | **18** (5 via `it.each` + 13) | Full array + `X-Total-Count` without paging; consecutive pages; offset past the end; total respects filters; employee scoping while paging; invalid paging → 400 (5 cases); header exposed to CORS; `/tasks/summary` counts and scoping; paging of employees, admin users, task history, notifications (shape kept) and the outbox |
 | [reports.test.js](../../backend/tests/reports.test.js) | **10** (5 via `it.each` + 5) | All 5 reports for admins; overdue task flagged; project progress; admin and employee dashboards; notifications list/mark/clear |
 | [uploads.test.js](../../backend/tests/uploads.test.js) | **18** | Attachments (multi-upload, non-assignee blocked + file removed, dangerous types, size limit, at least one file, inline only for images/PDF, access on download, delete rules, files removed when task deleted); avatars (upload/serve/replace/remove, images ≤ 2 MB, path tricks); role management (admins can't change roles, promotion takes effect + notifies, warning about active tasks, no self role change, unapproved accounts, password reset rules) |
 | [workflow.test.js](../../backend/tests/workflow.test.js) | **15** | Task creation validation; required skills; ranking; force rules; invalid employees; assign + notify + no double assign; reassign; work logs and auto IN_PROGRESS; state machine; audit history; comments; cancel/reopen/delete; auto-assign; nobody eligible; unassign |
-| **Total** | **157** | 12 files |
+| **Total** | **161** | 13 files |
 
 ---
 
@@ -29,7 +30,7 @@ Tests live in [backend/tests/](../../backend/tests).
 **[Basic]** Mostly **integration tests** (API tests) with **Jest + supertest**. Each test sends real HTTP requests to the real Express app (`supertest(app)` without opening a port), through real middleware, services and SQL, against a real (in-memory) SQLite database with the demo seed data. A few **unit tests** check pure functions (`skillComponentScore`, `WEIGHTS`). We chose integration tests because most bugs we found were in the **interaction** of layers (permissions, transactions, SQL), not in isolated functions.
 
 ### Q: How many tests are there and how did you count them?
-**[Basic]** **157** tests in 12 files (table above). `it.each([...])` creates one test per row, so `access.test.js` has 10 `it(...)` blocks + 8 generated = 18, `pagination.test.js` has 13 + 5 = 18, and `reports.test.js` has 5 + 5 = 10. The other files have plain `it(...)` blocks only: 139 `it(...)` + 18 generated = 157. Jest prints the total when you run `npm test`.
+**[Basic]** **161** tests in 13 files (table above). `it.each([...])` creates one test per row, so `access.test.js` has 10 `it(...)` blocks + 8 generated = 18, `pagination.test.js` has 13 + 5 = 18, and `reports.test.js` has 5 + 5 = 10. The other files have plain `it(...)` blocks only: 143 `it(...)` + 18 generated = 161. Jest prints the total when you run `npm test`.
 
 ### Q: How do you run the tests?
 **[Basic]**

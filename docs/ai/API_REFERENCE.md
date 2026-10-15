@@ -10,7 +10,7 @@ Access: **Public** · **Auth** (any approved, active account) · **Admin** (`ADM
 - **Envelope:** `{ success, message?, data }`; errors `{ success: false, message, errors? }`. A 500 also has a `reference` id (quote it when reporting a bug).
 - **Pagination (optional):** `?limit=1..200&offset=0..` on `/tasks`, `/tasks/:id/history`, `/employees`, `/admin/users`, `/notifications` and `/settings/email/outbox`. The body shape never changes; the number of rows matching the filters is in the **`X-Total-Count`** header (exposed to CORS clients). Without `limit`, `/tasks`, `/tasks/:id/history`, `/employees` and `/admin/users` return the full list; `/notifications` and the outbox default to `limit=50`. Invalid values → 400.
 - **Wrong method:** a known path called with an unsupported method returns **405** with an `Allow` header; an unknown path returns a JSON 404.
-- **Public demo mode** (`DEMO_MODE`, default on Vercel): actions that would lock visitors out of the built-in `@smartworkflow.org` accounts, SMTP, and (unless `DEMO_ALLOW_UPLOADS=true`) uploads return **403** with a message starting "Public demo:".
+- **Public demo mode** (`DEMO_MODE`, default on Vercel): actions that would lock visitors out of the built-in `@allocate.habibullah.dev` accounts, SMTP, and (unless `DEMO_ALLOW_UPLOADS=true`) uploads return **403** with a message starting "Public demo:".
 
 ## Auth
 
